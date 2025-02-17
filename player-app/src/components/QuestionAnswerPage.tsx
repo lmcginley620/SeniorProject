@@ -12,7 +12,6 @@ const QuestionAnswerPage: React.FC = () => {
 
   useEffect(() => {
     async function fetchQuestion() {
-      setQuestion('Loading question...'); // Temporary placeholder
       setAnswers([
         { text: 'Option 1', color: 'blue' },
         { text: 'Option 2', color: 'green' },
