@@ -1,28 +1,43 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { QRCodeCanvas } from "qrcode.react"; // Import QR Code component
+import { QRCodeCanvas } from "qrcode.react"; 
 import "../styles/homepage.css";
+import socket from "../socket";
 
 const HomePage: React.FC = () => {
   const [players, setPlayers] = useState<string[]>([]);
   const [roomCode, setRoomCode] = useState<string>("");
-  const [index, setIndex] = useState(0);
-  const mockPlayers = ["Luke", "Owen", "Dr. Chang"];
   const navigate = useNavigate();
 
-
-  // Function to generate a random 4-digit number
-  const generateRoomCode = () => {
-    return Math.floor(1000 + Math.random() * 9000).toString();
-  };
-
-  const qrUrl = "https://l23tlg32-5173.use.devtunnels.ms/";
-
-  // Generate room code once when the component mounts
   useEffect(() => {
-    setRoomCode(generateRoomCode());
+    const newRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    setRoomCode(newRoomCode);
   }, []);
 
+  
+  useEffect(() => {
+    console.log("🔗 Attempting to connect to WebSocket...");
+
+
+    socket.on("connect", () => {
+      console.log("WebSocket connected");
+      if (roomCode) {
+        console.log(`Host joining room: ${roomCode}`);
+        socket.emit("joinRoom", { roomCode, playerName: "Host" });
+      }
+    });
+
+  
+    socket.on("roomUpdate", (updatedPlayers: string[]) => {
+      console.log("Host received updated players:", updatedPlayers);
+      setPlayers(updatedPlayers.filter(player=> player !== "Host"));
+    });
+
+   
+    return () => {
+      socket.off("roomUpdate");
+    };
+  }, [roomCode]); 
 
   useEffect(() => {
     document.body.classList.add("homepage-body");
@@ -31,27 +46,10 @@ const HomePage: React.FC = () => {
     };
   }, []);
 
-  // Function to handle Start button click
+
   const handleStartGame = () => {
     navigate("/enter-topics");
   };
-
-  useEffect(() => {
-    if (index >= mockPlayers.length) return; // Stop when all players are added
-
-    const interval = setInterval(() => {
-      setPlayers((prevPlayers) => {
-        const newPlayer = mockPlayers[index]; // Ensure correct indexing
-        if (!newPlayer) return prevPlayers; // Prevent empty names
-        console.log(`Adding player: ${newPlayer}`); // Debugging log
-        return [...prevPlayers, newPlayer];
-      });
-
-      setIndex((prevIndex) => prevIndex + 1); // Update index properly
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [index]); // Depend on `index` to ensure updates
 
   return (
     <div className="host-screen">
@@ -70,7 +68,7 @@ const HomePage: React.FC = () => {
         <div className="qr-code-section">
           <p>Scan the QR Code to Join:</p>
           <div className="qr-code">
-            <QRCodeCanvas value={qrUrl} size={180} />
+            <QRCodeCanvas value={`https://l23tlg32-5173.use.devtunnels.ms/?room=${roomCode}`} size={180} />
           </div>
         </div>
       </main>
@@ -78,16 +76,16 @@ const HomePage: React.FC = () => {
       {/* Players List */}
       <footer className="players-list">
         <h3>Players Joined:</h3>
-        <ol>
+        <div className="player-list">
           {players.map((player, idx) => (
-            <li key={idx} className="player-entry animate-player">
+            <div key={idx} className="player-entry animate-player">
               {player}
-            </li>
+            </div>
           ))}
-        </ol>
+        </div>
       </footer>
 
-      {/* Start Game Button (Fixed Placement & Styling) */}
+      {/* Start Game Button */}
       <div className="start-button-container">
         <button className="start-game-button" onClick={handleStartGame}>
           Start Game
