@@ -1,7 +1,9 @@
 # Game API Documentation
 
 ## Overview
-This API provides endpoints for managing a real-time trivia game system. Players can join games, answer questions, and compete for high scores. The game host can control the flow of questions and manage the game state.
+This API provides endpoints for interacting with the Trivia Fusion game server. The API is split between two applications:
+- **Host Application**: Used by game administrators to create and manage games
+- **Player Application**: Used by participants to join games and submit answers
 
 ## Base URL
 ```
@@ -11,7 +13,7 @@ This API provides endpoints for managing a real-time trivia game system. Players
 ## Authentication
 Host authentication is handled via `hostId` in request bodies. Player authentication is handled via `playerId` in request bodies.
 
-## Endpoints
+## Host Application Endpoints
 
 ### Create Game
 Creates a new trivia game instance.
@@ -46,28 +48,6 @@ Creates a new trivia game instance.
 }
 ```
 
-### Join Game
-Allows a player to join an existing game in lobby state.
-
-**Endpoint:** `POST /games/:id/join`
-
-**Request Body:**
-```json
-{
-  "playerName": "string"
-}
-```
-
-**Response:**
-```json
-{
-  "id": "string",
-  "name": "string",
-  "score": 0,
-  "answers": []
-}
-```
-
 ### Start Game
 Transitions the game from lobby to in-progress state.
 
@@ -84,41 +64,6 @@ Transitions the game from lobby to in-progress state.
 ```json
 {
   "status": "started"
-}
-```
-
-### Get Current Question
-Retrieves the current active question.
-
-**Endpoint:** `GET /games/:id/questions`
-
-**Response:**
-```json
-{
-  "text": "string",
-  "options": ["string"],
-  "correctAnswer": 0,
-  "timeLimit": 30
-}
-```
-
-### Submit Answer
-Submits a player's answer to the current question.
-
-**Endpoint:** `POST /games/:id/answer`
-
-**Request Body:**
-```json
-{
-  "playerId": "string",
-  "answer": "string"
-}
-```
-
-**Response:**
-```json
-{
-  "status": "answer recorded"
 }
 ```
 
@@ -186,6 +131,65 @@ Ends the current game.
 }
 ```
 
+## Player Application Endpoints
+
+### Join Game
+Allows a player to join an existing game in lobby state.
+
+**Endpoint:** `POST /games/:id/join`
+
+**Request Body:**
+```json
+{
+  "playerName": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "string",
+  "name": "string",
+  "score": 0,
+  "answers": []
+}
+```
+
+### Get Current Question
+Retrieves the current active question.
+
+**Endpoint:** `GET /games/:id/questions`
+
+**Response:**
+```json
+{
+  "text": "string",
+  "options": ["string"],
+  "correctAnswer": 0,
+  "timeLimit": 30
+}
+```
+
+### Submit Answer
+Submits a player's answer to the current question.
+
+**Endpoint:** `POST /games/:id/answer`
+
+**Request Body:**
+```json
+{
+  "playerId": "string",
+  "answer": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "answer recorded"
+}
+```
+
 ## Game States
 - `lobby`: Initial state where players can join
 - `in-progress`: Active gameplay state
@@ -210,5 +214,4 @@ The API includes a debug mode that can be enabled via the `DEBUG_MODE` environme
 ## Notes
 - Questions are generated using OpenAI's GPT-4 model in production mode
 - Game codes are automatically generated 4-character uppercase alphanumeric strings
-- Correct answers award 100 points
 - All timestamps are in ISO 8601 format
