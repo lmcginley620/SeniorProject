@@ -2,6 +2,8 @@ import express from 'express';
 import { Router } from 'express';
 import { OpenAI } from 'openai';
 import { v4 as uuidv4 } from 'uuid';
+import { Request, Response } from "express"; // ✅ Import Express types
+
 
 // Type Definitions
 type GameStatus = 'lobby' | 'in-progress' | 'ended';
@@ -104,9 +106,9 @@ class GameManager {
     const gameId = this.generateGameCode();
 
     try {
-      const questions = this.debugMode ?
-        mockQuestions :
-        await this.generateQuestions(topics);
+      // const questions = this.debugMode ?
+      //   await this.generateQuestions(topics);
+      const questions: Question[] = []; // 
 
       const game: Game = {
         id: gameId,
@@ -159,6 +161,14 @@ class GameManager {
     }
   }
 
+  getGame(gameId: string): Game | null {
+    return this.games.get(gameId) || null;
+  }
+  
+  listGames(): string[] {
+    return Array.from(this.games.keys()); // ✅ Returns all active game IDs
+  }
+  
   joinGame(gameId: string, playerName: string): Player | null {
     Logger.info('Player attempting to join game', { gameId, playerName });
 
@@ -193,7 +203,7 @@ class GameManager {
       return false;
     }
 
-    game.status = 'in-progress';
+    game.status = 'lobby';
     Logger.success('Game started successfully', { gameId, playerCount: game.players.length });
     return true;
   }
@@ -330,6 +340,11 @@ const isDebugMode = process.env.DEBUG_MODE === 'true';
 const gameManager = new GameManager(process.env.OPENAI_API_KEY || '', isDebugMode);
 
 // api endpoints
+router.get('/', (req, res) => {
+  res.json({ message: 'API is running!' });
+});
+
+
 router.post('/games', async (req, res) => {
   try {
     Logger.info('POST /games request received', { body: req.body });
@@ -360,6 +375,25 @@ router.post('/games/:id/join', (req, res) => {
   Logger.success('Join game request completed');
   res.json(player);
 });
+
+router.get('/games/:id/players', (req, res) => {
+  const gameId = req.params.id;
+
+  Logger.info('GET /games/:id/players request received', { gameId: req.params.id });
+
+  console.log("Active Games in Memory: ", gameManager.listGames());
+  const game = gameManager.getGame(req.params.id);
+  if (!game) {
+    Logger.warn('Get players request failed - game not found', { gameId: req.params.id });
+    res.status(404).json({ error: 'Game not found' });
+    return;
+  }
+
+  Logger.success('Get players request completed', { players: game.players });
+  res.json(game.players);
+});
+
+
 
 router.post('/games/:id/start', (req, res) => {
   Logger.info('POST /games/:id/start request received', {

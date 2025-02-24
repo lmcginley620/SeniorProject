@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/playerjoin.css";
-import socket from "../socket";
+import { gameService } from "../services/gameService.ts"; // ✅ Now using player-app's gameService
 
 const PlayerPage: React.FC = () => {
   const [roomCode, setRoomCode] = useState("");
@@ -9,7 +9,7 @@ const PlayerPage: React.FC = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleJoin = (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (roomCode.length !== 4) {
@@ -21,15 +21,18 @@ const PlayerPage: React.FC = () => {
       return;
     }
 
-    console.log(`🔹 Attempting to send joinRoom event for Player: ${playerName}, Room: ${roomCode}`);
+    try {
+      const player = await gameService.joinGame(roomCode, playerName); // ✅ API call
 
-    socket.emit("joinRoom", { roomCode, playerName });
+      if (!player) {
+        setError("Failed to join game. Please check the room code.");
+        return;
+      }
 
-    socket.on("roomUpdate", (updatedPlayers) => {
-      console.log(`🎯 Received roomUpdate in player app:`, updatedPlayers);
-    });
-
-    navigate(`/question-answer?room=${roomCode}&player=${playerName}`);
+      navigate(`/question-answer?room=${roomCode}&player=${playerName}`); // ✅ Redirect on success
+    } catch (err) {
+      setError("Failed to join game. Please try again.");
+    }
   };
 
   return (

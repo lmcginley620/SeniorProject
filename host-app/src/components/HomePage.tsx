@@ -1,43 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { QRCodeCanvas } from "qrcode.react"; 
+import { useNavigate, useLocation } from "react-router-dom";
+import { QRCodeCanvas } from "qrcode.react";
 import "../styles/homepage.css";
-import socket from "../socket";
+import { gameService } from "../services/gameService";
 
 const HomePage: React.FC = () => {
-  const [players, setPlayers] = useState<string[]>([]);
-  const [roomCode, setRoomCode] = useState<string>("");
+  const location = useLocation();
   const navigate = useNavigate();
+  const roomCode = location.state?.roomCode || "NO CODE";
 
-  useEffect(() => {
-    const newRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
-    setRoomCode(newRoomCode);
-  }, []);
-
-  
-  useEffect(() => {
-    console.log("🔗 Attempting to connect to WebSocket...");
-
-
-    socket.on("connect", () => {
-      console.log("WebSocket connected");
-      if (roomCode) {
-        console.log(`Host joining room: ${roomCode}`);
-        socket.emit("joinRoom", { roomCode, playerName: "Host" });
-      }
-    });
-
-  
-    socket.on("roomUpdate", (updatedPlayers: string[]) => {
-      console.log("Host received updated players:", updatedPlayers);
-      setPlayers(updatedPlayers.filter(player=> player !== "Host"));
-    });
-
-   
-    return () => {
-      socket.off("roomUpdate");
-    };
-  }, [roomCode]); 
+  const [players, setPlayers] = useState<string[]>([]);
 
   useEffect(() => {
     document.body.classList.add("homepage-body");
@@ -46,17 +18,31 @@ const HomePage: React.FC = () => {
     };
   }, []);
 
+  // ✅ Fetch players from game-server every 3 seconds (Polling)
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        const response = await gameService.getPlayers(roomCode);
+        setPlayers(response.map((player: { name: string }) => player.name));
+      } catch (error) {
+        console.error("Failed to fetch players:", error);
+      }
+    };
+
+    fetchPlayers(); // Initial fetch
+    const interval = setInterval(fetchPlayers, 3000); // ✅ Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [roomCode]);
 
   const handleStartGame = () => {
-    navigate("/enter-topics");
+    navigate("/question", { state: { roomCode } });
   };
 
   return (
     <div className="host-screen">
       <header className="game-title">
-        <h1 className="animate__animated animate__jackInTheBox animate__slower">
-          TRIVIA FUSION
-        </h1>
+        <h1>TRIVIA FUSION</h1>
         <h2 className="sub-title">A Game by Luke McGinley & Owen Mitchell</h2>
       </header>
 
@@ -67,25 +53,26 @@ const HomePage: React.FC = () => {
         </div>
         <div className="qr-code-section">
           <p>Scan the QR Code to Join:</p>
-          <div className="qr-code">
-            <QRCodeCanvas value={`https://l23tlg32-5173.use.devtunnels.ms/?room=${roomCode}`} size={180} />
-          </div>
+          <QRCodeCanvas value={`http://localhost:5175/?room=${roomCode}`} size={180} />
         </div>
       </main>
 
-      {/* Players List */}
+      {/* ✅ Display Players in the Lobby */}
       <footer className="players-list">
         <h3>Players Joined:</h3>
         <div className="player-list">
-          {players.map((player, idx) => (
-            <div key={idx} className="player-entry animate-player">
-              {player}
-            </div>
-          ))}
+          {players.length === 0 ? (
+            <p>No players have joined yet...</p>
+          ) : (
+            players.map((player, idx) => (
+              <div key={idx} className="player-entry animate-player">
+                {player}
+              </div>
+            ))
+          )}
         </div>
       </footer>
 
-      {/* Start Game Button */}
       <div className="start-button-container">
         <button className="start-game-button" onClick={handleStartGame}>
           Start Game
