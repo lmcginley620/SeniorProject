@@ -1,38 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import '../styles/questionpage.css';
+import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { gameService } from "../services/gameService";
+import "../styles/questionpage.css";
 
 const QuestionAnswerPage: React.FC = () => {
-  const [question, setQuestion] = useState('');
-  const [answers, setAnswers] = useState([
-    { text: '', color: 'blue' },
-    { text: '', color: 'green' },
-    { text: '', color: 'yellow' },
-    { text: '', color: 'red' },
-  ]);
+  const location = useLocation();
+  const { roomCode, playerName } = location.state || {};
+  const [question, setQuestion] = useState<any>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [answerSubmitted, setAnswerSubmitted] = useState(false); // ✅ Track if the player answered
 
   useEffect(() => {
-    async function fetchQuestion() {
-      setAnswers([
-        { text: 'Option 1', color: 'blue' },
-        { text: 'Option 2', color: 'green' },
-        { text: 'Option 3', color: 'yellow' },
-        { text: 'Option 4', color: 'red' },
-      ]);
-    }
+    const fetchQuestion = async () => {
+      try {
+        console.log(`Fetching question for game: ${roomCode}`);
+        const response = await gameService.getCurrentQuestion(roomCode);
+        setQuestion(response);
+      } catch (error) {
+        console.error("Failed to fetch question:", error);
+      }
+    };
 
     fetchQuestion();
-  }, []);
+  }, [roomCode]);
+
+  const handleSubmitAnswer = async (answer: string) => {
+    if (answerSubmitted) return; // ✅ Prevent multiple submissions
+
+    const playerId = localStorage.getItem("playerId");
+    if (!roomCode || !playerId) return;
+
+    try {
+      console.log(`Submitting answer: ${answer} for player: ${playerId}`);
+      await gameService.submitAnswer(roomCode, playerId, answer);
+      setSelectedAnswer(answer);
+      setAnswerSubmitted(true); // ✅ Lock submission after answering
+    } catch (error) {
+      console.error("Error submitting answer:", error);
+    }
+  };
+
+  if (!question) {
+    return <p className="loading-text">Loading question...</p>;
+  }
 
   return (
     <div className="question-page">
-      <div className="question-box">{question}</div>
-      <div className="answers center">
-        {answers.map((answer, index) => (
-          <button key={index} className={`answer ${answer.color}`}>
-            {answer.text}
-          </button>
-        ))}
-      </div>
+      {answerSubmitted ? (
+        <h1 className="answer-submitted-text">Answer Submitted ✔</h1> // ✅ Show confirmation
+      ) : (
+        <div className="answers">
+          {question.options.map((option: string, index: number) => (
+            <button
+              key={index}
+              className={`answer ${["red", "blue", "green", "yellow"][index]}`}
+              onClick={() => handleSubmitAnswer(option)}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

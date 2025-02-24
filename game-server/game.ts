@@ -2,11 +2,9 @@ import express from 'express';
 import { Router } from 'express';
 import { OpenAI } from 'openai';
 import { v4 as uuidv4 } from 'uuid';
-import { Request, Response } from "express"; // ✅ Import Express types
-
 
 // Type Definitions
-type GameStatus = 'lobby' | 'in-progress' | 'ended';
+type GameStatus = 'waiting' | 'lobby' | 'in-progress' | 'ended';
 
 interface Player {
   id: string;
@@ -113,7 +111,7 @@ class GameManager {
       const game: Game = {
         id: gameId,
         hostId,
-        status: 'lobby',
+        status: 'waiting',
         players: [],
         currentQuestionIndex: 0,
         questions,
@@ -164,11 +162,11 @@ class GameManager {
   getGame(gameId: string): Game | null {
     return this.games.get(gameId) || null;
   }
-  
+
   listGames(): string[] {
-    return Array.from(this.games.keys()); // ✅ Returns all active game IDs
+    return Array.from(this.games.keys()); 
   }
-  
+
   joinGame(gameId: string, playerName: string): Player | null {
     Logger.info('Player attempting to join game', { gameId, playerName });
 
@@ -190,12 +188,13 @@ class GameManager {
     return player;
   }
 
-  startGame(gameId: string, hostId: string): boolean {
-    Logger.info('Attempting to start game', { gameId, hostId });
+
+  createLobby(gameId: string, hostId: string): boolean {
+    Logger.info('Attempting to create lobby', { gameId, hostId });
 
     const game = this.games.get(gameId);
-    if (!game || game.hostId !== hostId || game.status !== 'lobby') {
-      Logger.warn('Start game failed - invalid game state', {
+    if (!game || game.hostId !== hostId || game.status !== "waiting") {
+      Logger.warn('Create lobby failed - invalid game state', {
         gameExists: !!game,
         correctHost: game?.hostId === hostId,
         status: game?.status
@@ -203,35 +202,66 @@ class GameManager {
       return false;
     }
 
-    game.status = 'lobby';
-    Logger.success('Game started successfully', { gameId, playerCount: game.players.length });
+    game.status = "lobby";
+    Logger.success("Lobby created - Players can now join", { gameId });
+
     return true;
   }
 
+
+  startTrivia(gameId: string, hostId: string): boolean {
+    Logger.info('Attempting to start trivia', { gameId, hostId });
+
+    const game = this.games.get(gameId);
+    if (!game || game.hostId !== hostId || game.status !== "lobby") {
+      Logger.warn('Start trivia failed - invalid game state', {
+        gameExists: !!game,
+        correctHost: game?.hostId === hostId,
+        status: game?.status
+      });
+      return false;
+    }
+
+    // ✅ Assign mock questions if none exist
+    if (game.questions.length === 0) {
+      Logger.info("Assigning mock questions to game", { gameId });
+      game.questions = [...mockQuestions];
+    }
+
+    game.status = "in-progress";
+    Logger.success("Trivia officially started", { gameId, playerCount: game.players.length });
+
+    return true;
+  }
+
+
+
+
+
   submitAnswer(gameId: string, playerId: string, answer: string): boolean {
     Logger.info('Processing answer submission', { gameId, playerId });
-
+  
     const game = this.games.get(gameId);
     if (!game || game.status !== 'in-progress') {
       Logger.warn('Answer submission failed - invalid game state', { gameId, status: game?.status });
       return false;
     }
-
+  
     const player = game.players.find(p => p.id === playerId);
     if (!player) {
       Logger.warn('Answer submission failed - player not found', { gameId, playerId });
       return false;
     }
-
+  
     const currentQuestion = game.questions[game.currentQuestionIndex];
     const isCorrect = currentQuestion.options[currentQuestion.correctAnswer] === answer;
-
+  
     player.answers.push({
       questionIndex: game.currentQuestionIndex,
       answer,
       timestamp: new Date()
     });
-
+  
     if (isCorrect) {
       player.score += 100;
       Logger.success('Correct answer submitted', {
@@ -247,9 +277,10 @@ class GameManager {
         questionIndex: game.currentQuestionIndex
       });
     }
-
+  
     return true;
   }
+  
 
   nextQuestion(gameId: string, hostId: string): Question | null {
     Logger.info('Moving to next question', { gameId, hostId });
@@ -379,12 +410,11 @@ router.post('/games/:id/join', (req, res) => {
 router.get('/games/:id/players', (req, res) => {
   const gameId = req.params.id;
 
-  Logger.info('GET /games/:id/players request received', { gameId: req.params.id });
-
+  Logger.info('GET /games/:id/players request received', { gameId });
   console.log("Active Games in Memory: ", gameManager.listGames());
-  const game = gameManager.getGame(req.params.id);
+  const game = gameManager.getGame(gameId);
   if (!game) {
-    Logger.warn('Get players request failed - game not found', { gameId: req.params.id });
+    Logger.warn('Get players request failed - game not found', { gameId });
     res.status(404).json({ error: 'Game not found' });
     return;
   }
@@ -393,24 +423,44 @@ router.get('/games/:id/players', (req, res) => {
   res.json(game.players);
 });
 
-
-
-router.post('/games/:id/start', (req, res) => {
-  Logger.info('POST /games/:id/start request received', {
+router.post('/games/:id/lobby', (req, res) => {
+  Logger.info('POST /games/:id/lobby request received', {
     gameId: req.params.id,
     body: req.body
   });
 
   const { hostId } = req.body;
-  const success = gameManager.startGame(req.params.id, hostId);
+  const success = gameManager.createLobby(req.params.id, hostId);
+
   if (!success) {
-    Logger.warn('Start game request failed');
-    res.status(400).json({ error: 'Unable to start game' });
+    Logger.warn('Create lobby request failed');
+    res.status(400).json({ error: 'Unable to create lobby' });
     return;
   }
 
-  Logger.success('Start game request completed');
-  res.json({ status: 'started' });
+  Logger.success('Lobby created successfully');
+  res.json({ status: "lobby" });
+});
+
+router.post('/games/:id/start-trivia', (req, res) => {
+  Logger.info('POST /games/:id/star-triviat request received', {
+    gameId: req.params.id,
+    body: req.body
+  });
+
+  const { hostId } = req.body;
+  const success = gameManager.startTrivia(req.params.id, hostId);
+  const game = gameManager.getGame(req.params.id);
+
+  if (!success || !game) {
+    Logger.warn('Start trivia request failed');
+    res.status(400).json({ error: 'Unable to start trivia' });
+    return;
+  }
+
+  Logger.success('Trivia started successfully');
+  const question = gameManager.getCurrentQuestion(game.id);
+  res.json({ status: "in-progress", question });
 });
 
 router.get('/games/:id/questions', (req, res) => {
@@ -427,6 +477,22 @@ router.get('/games/:id/questions', (req, res) => {
   res.json(question);
 });
 
+router.get("/games/:id/status", (req, res) => {
+  const gameId = req.params.id;
+  Logger.info("GET /games/:id/status request received", { gameId });
+
+  const game = gameManager.getGame(gameId);
+  if (!game) {
+    Logger.warn("Game status request failed - game not found", { gameId });
+    res.status(404).json({ error: "Game not found" });
+    return;
+  }
+
+  Logger.success("Game status request completed", { gameId, status: game.status });
+  res.json({ status: game.status });
+});
+
+
 router.post('/games/:id/answer', (req, res) => {
   Logger.info('POST /games/:id/answer request received', {
     gameId: req.params.id,
@@ -435,6 +501,7 @@ router.post('/games/:id/answer', (req, res) => {
 
   const { playerId, answer } = req.body;
   const success = gameManager.submitAnswer(req.params.id, playerId, answer);
+
   if (!success) {
     Logger.warn('Submit answer request failed');
     res.status(400).json({ error: 'Unable to submit answer' });
@@ -443,50 +510,6 @@ router.post('/games/:id/answer', (req, res) => {
 
   Logger.success('Submit answer request completed');
   res.json({ status: 'answer recorded' });
-});
-
-router.post('/games/:id/next', (req, res) => {
-  Logger.info('POST /games/:id/next request received', {
-    gameId: req.params.id,
-    body: req.body
-  });
-
-  const { hostId } = req.body;
-  const question = gameManager.nextQuestion(req.params.id, hostId);
-  if (!question) {
-    Logger.warn('Next question request failed');
-    res.status(400).json({ error: 'Unable to move to next question' });
-    return;
-  }
-
-  Logger.success('Next question request completed');
-  res.json(question);
-});
-
-router.get('/games/:id/leaderboard', (req, res) => {
-  Logger.info('GET /games/:id/leaderboard request received', { gameId: req.params.id });
-
-  const leaderboard = gameManager.getLeaderboard(req.params.id);
-  Logger.success('Get leaderboard request completed');
-  res.json(leaderboard);
-});
-
-router.post('/games/:id/end', (req, res) => {
-  Logger.info('POST /games/:id/end request received', {
-    gameId: req.params.id,
-    body: req.body
-  });
-
-  const { hostId } = req.body;
-  const success = gameManager.endGame(req.params.id, hostId);
-  if (!success) {
-    Logger.warn('End game request failed');
-    res.status(400).json({ error: 'Unable to end game' });
-    return;
-  }
-
-  Logger.success('End game request completed');
-  res.json({ status: 'ended' });
 });
 
 export default router;

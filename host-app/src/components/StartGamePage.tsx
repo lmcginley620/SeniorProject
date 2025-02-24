@@ -12,11 +12,9 @@ const StartGamePage: React.FC = () => {
     setError(null);
 
     try {
-      // ✅ Use the gameService to create a game
       const game = await gameService.createGame();
       console.log('Game created:', game);
 
-      // ✅ Navigate to EnterTopicsPage with the room code
       navigate('/enter-topics', { state: { roomCode: game.id } });
     } catch (err) {
       setError('Failed to create game. Please try again.');

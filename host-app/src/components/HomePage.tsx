@@ -10,6 +10,7 @@ const HomePage: React.FC = () => {
   const roomCode = location.state?.roomCode || "NO CODE";
 
   const [players, setPlayers] = useState<string[]>([]);
+  const [gameStatus, setGameStatus] = useState<string>("waiting"); 
 
   useEffect(() => {
     document.body.classList.add("homepage-body");
@@ -18,7 +19,7 @@ const HomePage: React.FC = () => {
     };
   }, []);
 
-  // ✅ Fetch players from game-server every 3 seconds (Polling)
+ 
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
@@ -29,14 +30,20 @@ const HomePage: React.FC = () => {
       }
     };
 
-    fetchPlayers(); // Initial fetch
-    const interval = setInterval(fetchPlayers, 3000); // ✅ Poll every 3 seconds
+    fetchPlayers(); 
+    const interval = setInterval(fetchPlayers, 3000); 
 
     return () => clearInterval(interval);
   }, [roomCode]);
 
-  const handleStartGame = () => {
-    navigate("/question", { state: { roomCode } });
+  const handleStartTrivia = async () => {
+    try {
+      const data = await gameService.startTrivia(roomCode);
+      setGameStatus("in-progress"); 
+      navigate("/question", { state: { roomCode, question: data.question } }); 
+    } catch (error) {
+      console.error("Failed to start trivia:", error);
+    }
   };
 
   return (
@@ -57,7 +64,6 @@ const HomePage: React.FC = () => {
         </div>
       </main>
 
-      {/* ✅ Display Players in the Lobby */}
       <footer className="players-list">
         <h3>Players Joined:</h3>
         <div className="player-list">
@@ -74,9 +80,9 @@ const HomePage: React.FC = () => {
       </footer>
 
       <div className="start-button-container">
-        <button className="start-game-button" onClick={handleStartGame}>
-          Start Game
-        </button>
+          <button className="start-game-button" onClick={handleStartTrivia}>
+            Start Trivia
+          </button>
       </div>
     </div>
   );

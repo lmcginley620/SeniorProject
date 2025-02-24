@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/playerjoin.css";
-import { gameService } from "../services/gameService.ts"; // ✅ Now using player-app's gameService
+import { gameService } from "../services/gameService.ts"; 
 
 const PlayerPage: React.FC = () => {
   const [roomCode, setRoomCode] = useState("");
@@ -22,16 +22,16 @@ const PlayerPage: React.FC = () => {
     }
 
     try {
-      const player = await gameService.joinGame(roomCode, playerName); // ✅ API call
+      const player = await gameService.joinGame(roomCode, playerName);
 
       if (!player) {
         setError("Failed to join game. Please check the room code.");
         return;
       }
 
-      navigate(`/question-answer?room=${roomCode}&player=${playerName}`); // ✅ Redirect on success
+      navigate("/waiting-room", { state: { roomCode, playerName } });
     } catch (err) {
-      setError("Failed to join game. Please try again.");
+      setError("Failed to join game. Please check the room code.");
     }
   };
 

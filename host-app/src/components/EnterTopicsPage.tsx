@@ -19,19 +19,18 @@ const EnterTopicsPage: React.FC = () => {
     }
   };
 
-  const startGame = async () => {
+  const createLobby = async () => {
     try {
-      // ✅ Call the API to start the game
-      await gameService.startGame(roomCode);
-      navigate('/lobby', { state: { roomCode } });
+      console.log("Creating lobby...");
+      await gameService.createLobby(roomCode);
+      navigate('/lobby', { state: { roomCode, topics } });
     } catch (err) {
-      setError('Failed to start the game. Please try again.');
+      setError('Failed to create lobby. Please try again.');
     }
   };
 
   return (
     <div className="enter-topics-container">
-      {/* ✅ Display Room Code */}
       <h1 className="room-code-display">Room Code: {roomCode}</h1>
 
       <h1 className="enter-topics-title">Enter Trivia Topics</h1>
@@ -61,10 +60,9 @@ const EnterTopicsPage: React.FC = () => {
       </div>
 
       {error && <p className="error-message">{error}</p>}
-
-      {/* ✅ Start Game Button */}
-      <button className="start-trivia-button" onClick={startGame} disabled={topics.length === 0}>
-        Start Trivia
+      
+      <button className="start-trivia-button" onClick={createLobby} disabled={topics.length === 0}>
+        Create Lobby
       </button>
     </div>
   );
