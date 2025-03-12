@@ -164,7 +164,7 @@ class GameManager {
   }
 
   listGames(): string[] {
-    return Array.from(this.games.keys()); 
+    return Array.from(this.games.keys());
   }
 
   joinGame(gameId: string, playerName: string): Player | null {
@@ -240,28 +240,28 @@ class GameManager {
 
   submitAnswer(gameId: string, playerId: string, answer: string): boolean {
     Logger.info('Processing answer submission', { gameId, playerId });
-  
+
     const game = this.games.get(gameId);
     if (!game || game.status !== 'in-progress') {
       Logger.warn('Answer submission failed - invalid game state', { gameId, status: game?.status });
       return false;
     }
-  
+
     const player = game.players.find(p => p.id === playerId);
     if (!player) {
       Logger.warn('Answer submission failed - player not found', { gameId, playerId });
       return false;
     }
-  
+
     const currentQuestion = game.questions[game.currentQuestionIndex];
     const isCorrect = currentQuestion.options[currentQuestion.correctAnswer] === answer;
-  
+
     player.answers.push({
       questionIndex: game.currentQuestionIndex,
       answer,
       timestamp: new Date()
     });
-  
+
     if (isCorrect) {
       player.score += 100;
       Logger.success('Correct answer submitted', {
@@ -277,10 +277,10 @@ class GameManager {
         questionIndex: game.currentQuestionIndex
       });
     }
-  
+
     return true;
   }
-  
+
 
   nextQuestion(gameId: string, hostId: string): Question | null {
     Logger.info('Moving to next question', { gameId, hostId });
@@ -476,6 +476,40 @@ router.get('/games/:id/questions', (req, res) => {
   Logger.success('Get question request completed');
   res.json(question);
 });
+
+router.get('/games/:id/results', (req, res) => {
+  const gameId = req.params.id; // ✅ Fix: Ensure gameId is extracted
+  Logger.info('GET /games/:id/results request received', { gameId });
+
+  const game = gameManager.getGame(gameId);
+  if (!game || game.status !== 'in-progress') {
+    Logger.warn('Get results request failed - invalid game state', { gameId });
+    res.status(400).json({ error: 'Game is not in progress' });
+    return;
+  }
+
+  const currentQuestion = game.questions[game.currentQuestionIndex];
+
+  // ✅ Count the answers submitted by players
+  const answerCounts: Record<string, number> = {};
+  currentQuestion.options.forEach((option) => {
+    answerCounts[option] = 0;
+  });
+
+  game.players.forEach((player) => {
+    const answer = player.answers.find(
+      (a) => a.questionIndex === game.currentQuestionIndex
+    )?.answer;
+    if (answer && answerCounts.hasOwnProperty(answer)) {
+      answerCounts[answer] += 1;
+    }
+  });
+
+  Logger.success('Results retrieved successfully', { gameId, results: answerCounts });
+  res.json({ question: currentQuestion.text, results: answerCounts });
+});
+
+
 
 router.get("/games/:id/status", (req, res) => {
   const gameId = req.params.id;

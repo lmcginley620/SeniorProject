@@ -6,6 +6,7 @@ import HomePage from './components/HomePage';
 import EnterTopicsPage from './components/EnterTopicsPage';
 import QuestionPage from './components/QuestionPage';
 import EndGamePage from './components/EndGamePage';
+import { QuestionResults } from "./components/QuestionResults";
 
 const App: React.FC = () => {
   return (
@@ -17,6 +18,7 @@ const App: React.FC = () => {
         <Route path="/question" element={<QuestionPage />} />
         <Route path="/end" element={<EndGamePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/question-result" element={<QuestionResults />} />
       </Routes>
     </Router>
   );
