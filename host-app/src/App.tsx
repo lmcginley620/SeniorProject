@@ -7,6 +7,7 @@ import EnterTopicsPage from './components/EnterTopicsPage';
 import QuestionPage from './components/QuestionPage';
 import EndGamePage from './components/EndGamePage';
 import { QuestionResults } from "./components/QuestionResults";
+import Leaderboard from "./components/leaderboard/Leaderboard";
 
 const App: React.FC = () => {
   return (
@@ -19,6 +20,7 @@ const App: React.FC = () => {
         <Route path="/end" element={<EndGamePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/question-result" element={<QuestionResults />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
       </Routes>
     </Router>
   );

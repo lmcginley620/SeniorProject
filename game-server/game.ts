@@ -4,7 +4,7 @@ import { OpenAI } from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 
 // Type Definitions
-type GameStatus = 'waiting' | 'lobby' | 'in-progress' | 'ended';
+type GameStatus = 'waiting' | 'lobby' | 'in-progress' | 'results' | 'ended';
 
 interface Player {
   id: string;
@@ -91,6 +91,7 @@ class GameManager {
   private games: Map<string, Game>;
   private openai: OpenAI | null;
   private debugMode: boolean;
+
 
   constructor(apiKey: string, debug: boolean = false) {
     this.games = new Map();
@@ -254,61 +255,86 @@ class GameManager {
     }
 
     const currentQuestion = game.questions[game.currentQuestionIndex];
-    const isCorrect = currentQuestion.options[currentQuestion.correctAnswer] === answer;
 
+    // Prevent duplicate answers
+    if (player.answers.some(a => a.questionIndex === game.currentQuestionIndex)) {
+      Logger.warn('Duplicate answer detected', { gameId, playerId });
+      return false;
+    }
+
+    // Record the player's answer
     player.answers.push({
       questionIndex: game.currentQuestionIndex,
       answer,
       timestamp: new Date()
     });
 
-    if (isCorrect) {
+    // ✅ Award points if correct
+    if (currentQuestion.options[currentQuestion.correctAnswer] === answer) {
       player.score += 100;
-      Logger.success('Correct answer submitted', {
-        gameId,
-        playerId,
-        questionIndex: game.currentQuestionIndex,
-        newScore: player.score
-      });
+      Logger.success('Correct answer submitted', { gameId, playerId, newScore: player.score });
     } else {
-      Logger.info('Incorrect answer submitted', {
-        gameId,
-        playerId,
-        questionIndex: game.currentQuestionIndex
-      });
+      Logger.info('Incorrect answer submitted', { gameId, playerId });
+    }
+
+    // ✅ Check if all players have submitted answers
+    const allAnswered = game.players.every(p =>
+      p.answers.some(a => a.questionIndex === game.currentQuestionIndex)
+    );
+
+    if (allAnswered) {
+      Logger.success('All players have submitted answers, moving to results phase', { gameId });
+
+      // ✅ Transition game state to results phase
+      game.status = 'results';
+
+      // ✅ Automatically move to the next question after 5 seconds
+      setTimeout(() => {
+        this.nextQuestion(gameId);
+      }, 5000);
     }
 
     return true;
   }
 
 
-  nextQuestion(gameId: string, hostId: string): Question | null {
-    Logger.info('Moving to next question', { gameId, hostId });
+
+  nextQuestion(gameId: string): Question | null {
+    Logger.info('Moving to next question', { gameId });
 
     const game = this.games.get(gameId);
-    if (!game || game.hostId !== hostId || game.status !== 'in-progress') {
+    if (!game || game.status !== 'results') {  // ✅ Ensure it only moves forward from "results"
       Logger.warn('Next question failed - invalid game state', {
         gameExists: !!game,
-        correctHost: game?.hostId === hostId,
         status: game?.status
       });
       return null;
     }
 
-    game.currentQuestionIndex++;
-    if (game.currentQuestionIndex >= game.questions.length) {
-      game.status = 'ended';
-      Logger.info('Game ended - no more questions', { gameId });
-      return null;
-    }
+    // ✅ Add a 3-second delay before moving to the next question
+    setTimeout(() => {
+      game.currentQuestionIndex++;
 
-    Logger.success('Advanced to next question', {
-      gameId,
-      questionIndex: game.currentQuestionIndex,
-      questionsRemaining: game.questions.length - game.currentQuestionIndex
-    });
+      if (game.currentQuestionIndex >= game.questions.length) {
+        game.status = 'ended';
+        Logger.info('Game ended - all questions completed', { gameId });
+        return;
+      }
+
+      game.status = 'in-progress';
+
+      Logger.success('Advanced to next question', {
+        gameId,
+        questionIndex: game.currentQuestionIndex,
+        questionsRemaining: game.questions.length - game.currentQuestionIndex
+      });
+
+    }, 3000); // ✅ 3-second delay to let players see results
+
     return game.questions[game.currentQuestionIndex];
   }
+
+
 
   getLeaderboard(gameId: string): Player[] {
     Logger.info('Fetching leaderboard', { gameId });
@@ -478,13 +504,15 @@ router.get('/games/:id/questions', (req, res) => {
 });
 
 router.get('/games/:id/results', (req, res) => {
-  const gameId = req.params.id; // ✅ Fix: Ensure gameId is extracted
+  const gameId = req.params.id;
   Logger.info('GET /games/:id/results request received', { gameId });
 
   const game = gameManager.getGame(gameId);
-  if (!game || game.status !== 'in-progress') {
-    Logger.warn('Get results request failed - invalid game state', { gameId });
-    res.status(400).json({ error: 'Game is not in progress' });
+
+  // ✅ Fix: Ensure results are fetched when the game is in "results" phase
+  if (!game || game.status !== 'results') {
+    Logger.warn('Get results request failed - game is not in results phase', { gameId, status: game?.status });
+    res.status(400).json({ error: 'Game is not in results phase' });
     return;
   }
 
@@ -508,6 +536,7 @@ router.get('/games/:id/results', (req, res) => {
   Logger.success('Results retrieved successfully', { gameId, results: answerCounts });
   res.json({ question: currentQuestion.text, results: answerCounts });
 });
+
 
 
 
@@ -545,5 +574,36 @@ router.post('/games/:id/answer', (req, res) => {
   Logger.success('Submit answer request completed');
   res.json({ status: 'answer recorded' });
 });
+
+router.post('/games/:id/next-question', (req, res) => {
+  Logger.info('POST /games/:id/next-question request received', { gameId: req.params.id });
+
+  const gameId = req.params.id;
+  const game = gameManager.getGame(gameId);
+
+  if (!game) {
+    Logger.warn('Next question request failed - game not found', { gameId });
+    res.status(404).json({ error: 'Game not found' });
+    return;
+  }
+
+  if (game.status !== 'results') {
+    Logger.warn('Next question request failed - game is not in results phase', { gameId, status: game.status });
+    res.status(400).json({ error: 'Game is not in the results phase' });
+    return;
+  }
+
+  const nextQuestion = gameManager.nextQuestion(gameId);
+
+  if (!nextQuestion) {
+    Logger.success('Game ended, no more questions remaining', { gameId });
+    res.json({ status: 'ended' });
+    return;
+  }
+
+  Logger.success('Moved to next question', { gameId, question: nextQuestion });
+  res.json({ status: 'in-progress', question: nextQuestion });
+});
+
 
 export default router;

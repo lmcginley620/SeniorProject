@@ -5,7 +5,7 @@ const API_BASE_URL = 'http://localhost:3000/api';
 export interface Game {
   id: string;
   hostId: string;
-  status: 'waiting' | 'lobby' | 'in-progress' | 'ended';
+  status: 'waiting' | 'lobby' | 'in-progress' | 'results' | 'ended';
   players: Player[];
   currentQuestionIndex: number;
   questions: Question[];
@@ -139,6 +139,89 @@ class GameService {
       return null;
     }
   }
+
+
+  // ✅ Fetch Game Status (NEW)
+  async getGameStatus(gameId: string): Promise<'waiting' | 'lobby' | 'in-progress' | 'results' | 'ended' | null> {
+    try {
+      console.log(`Fetching game status for game ${gameId}`);
+      const response = await axios.get(`${API_BASE_URL}/games/${gameId}/status`);
+      return response.data.status;
+    } catch (error: any) {
+      console.error("Failed to fetch game status:", error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  // ✅ Move to the Next Question (NEW)
+  async nextQuestion(gameId: string): Promise<Question | null> {
+    try {
+      console.log(`Advancing to next question for game ${gameId}`);
+      const response = await axios.post(`${API_BASE_URL}/games/${gameId}/next-question`);
+
+      if (response.data.status === 'ended') {
+        console.log("Game has ended.");
+        return null;
+      }
+
+      return response.data.question;
+    } catch (error: any) {
+      console.error("Failed to advance question:", error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  // ✅ Submit Answer
+  async submitAnswer(gameId: string, playerId: string, answer: string): Promise<boolean> {
+    try {
+      console.log(`Submitting answer for player ${playerId} in game ${gameId}`);
+      const response = await axios.post(`${API_BASE_URL}/games/${gameId}/answer`, { playerId, answer });
+
+      if (response.data.status === 'answer recorded') {
+        console.log("Answer submitted successfully.");
+        return true;
+      }
+
+      return false;
+    } catch (error: any) {
+      console.error("Failed to submit answer:", error.response?.data || error.message);
+      return false;
+    }
+  }
+
+  // ✅ Poll Game Status to Detect Changes
+  async pollGameStatus(gameId: string, callback: (status: string) => void) {
+    try {
+      const checkStatus = async () => {
+        const status = await this.getGameStatus(gameId);
+        if (status) {
+          callback(status);
+        }
+      };
+
+      // Check every second
+      const interval = setInterval(checkStatus, 1000);
+
+      // Stop polling when the game ends
+      return () => clearInterval(interval);
+    } catch (error) {
+      console.error("Error polling game status:", error);
+    }
+  }
+
+  async getGameResults(gameId: string): Promise<{ question: string; results: Record<string, number> }> {
+    try {
+      console.log(`Fetching results for game ${gameId}`);
+      const response = await axios.get(`${API_BASE_URL}/games/${gameId}/results`);
+      return response.data;
+    } catch (error: any) {
+      console.error("Failed to fetch game results:", error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+
+
 
 }
 
