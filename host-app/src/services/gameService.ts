@@ -76,22 +76,22 @@ class GameService {
   async startTrivia(gameId: string): Promise<any> {
     try {
       console.log(`Starting trivia for game ID: ${gameId}`);
-  
+
       const hostId = localStorage.getItem("hostId");
       if (!hostId) {
         throw new Error("Host ID not found in localStorage.");
       }
-  
+
       const response = await axios.post(`${API_BASE_URL}/games/${gameId}/start-trivia`, { hostId });
       console.log("Trivia started successfully:", response.data);
-  
+
       return response.data; // ✅ Returns the first question
     } catch (error: any) {
       console.error("Failed to start trivia:", error.response?.data || error.message);
       throw error;
     }
   }
-  
+
 
   // ✅ Step 4: Player Joins the Game (Only Allowed in "lobby" State)
   async joinGame(gameId: string, playerName: string): Promise<Player | null> {
@@ -139,7 +139,7 @@ class GameService {
       return null;
     }
   }
-  
+
 }
 
 export const gameService = new GameService();
