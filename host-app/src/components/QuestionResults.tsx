@@ -30,45 +30,53 @@ export function QuestionResults() {
 
   const [chartData, setChartData] = useState<any[]>([]);
   const [questionText, setQuestionText] = useState<string>("Loading...");
+  const [gameStatus, setGameStatus] = useState<string>("results");
 
   useEffect(() => {
-    // ✅ Fetch the actual game results from the server
     const fetchResults = async () => {
       try {
         const response = await gameService.getGameResults(roomCode);
-        console.log("Game results:", response);
+        console.log("Game results received in UI:", response);
 
-        // ✅ Transform response into chart data format
-        const formattedData = Object.keys(response.results).map((option, index) => ({
-          name: option,
-          votes: response.results[option],
-        }));
+        if (response) {
+          const formattedData = Object.keys(response.results).map((option, index) => ({
+            name: option,
+            votes: response.results[option],
+          }));
 
-        setChartData(formattedData);
-        setQuestionText(response.question);
+          setChartData(formattedData);
+          setQuestionText(response.question);
+        } else {
+          console.warn("No results received.");
+        }
       } catch (error) {
         console.error("Failed to fetch game results:", error);
       }
     };
 
     fetchResults();
+  }, [roomCode]);
 
-    // ✅ Wait 5 seconds, then check the next game state
-    const timer = setTimeout(async () => {
+  // ✅ Poll for next game status
+  useEffect(() => {
+    const pollStatus = setInterval(async () => {
       try {
         const status = await gameService.getGameStatus(roomCode);
+        console.log("Polled game status:", status);
 
         if (status === "in-progress") {
-          navigate("/question", { state: { roomCode } }); // ✅ Move to next question
+          clearInterval(pollStatus);
+          navigate("/question", { state: { roomCode } });
         } else if (status === "ended") {
-          navigate("/leaderboard"); // ✅ Show leaderboard if game is over
+          clearInterval(pollStatus);
+          navigate("/leaderboard");
         }
       } catch (error) {
         console.error("Error checking game status:", error);
       }
-    }, 5000);
+    }, 1000); // ✅ Poll every second
 
-    return () => clearTimeout(timer);
+    return () => clearInterval(pollStatus);
   }, [roomCode, navigate]);
 
   // ✅ Define Chart Config
@@ -79,7 +87,7 @@ export function QuestionResults() {
     ...chartData.reduce((acc, data, index) => {
       acc[data.name] = { label: data.name, color: COLORS[index] };
       return acc;
-    }, {} as Record<string, { label: string; color: string }>)
+    }, {} as Record<string, { label: string; color: string }>),
   };
 
   return (

@@ -23,6 +23,7 @@ export interface Question {
   options: string[];
   correctAnswer: number;
   timeLimit: number;
+  questionIndex: number;
 }
 
 class GameService {
@@ -209,16 +210,79 @@ class GameService {
     }
   }
 
-  async getGameResults(gameId: string): Promise<{ question: string; results: Record<string, number> }> {
+  async getGameResults(gameId: string): Promise<{ question: string; results: Record<string, number> } | null> {
     try {
-      console.log(`Fetching results for game ${gameId}`);
-      const response = await axios.get(`${API_BASE_URL}/games/${gameId}/results`);
-      return response.data;
+        console.log(`Fetching results for game ${gameId}`);
+        const response = await axios.get(`${API_BASE_URL}/games/${gameId}/results`);
+
+        if (!response.data || !response.data.results) {
+            console.warn("No results data received.");
+            return null;
+        }
+
+        console.log("Received game results:", response.data);
+        return response.data;
     } catch (error: any) {
-      console.error("Failed to fetch game results:", error.response?.data || error.message);
-      throw error;
+        console.error("Failed to fetch game results:", error.response?.data || error.message);
+        return null;  // Prevents breaking the UI if results fail
     }
-  }
+}
+
+
+async pollForNextQuestion(
+  gameId: string,
+  callback: (question: any, gameStatus: string) => void
+): Promise<() => void> {
+  console.log(`Starting polling for next question in game ${gameId}`);
+
+  let lastQuestionIndex = -1;
+  let waitingForResults = false;
+
+  const checkForNextQuestion = async () => {
+      try {
+          const status = await this.getGameStatus(gameId);
+
+          if (status === "ended") {
+              console.log("Game has ended, stopping polling.");
+              clearInterval(interval);
+              callback(null, "ended");
+              return;
+          }
+
+          if (status === "results") {
+              console.log("Game is in results phase, waiting...");
+              waitingForResults = true;
+              return;
+          }
+
+          // ✅ Keep polling until the new question actually changes
+          if (waitingForResults && status === "in-progress") {
+              console.log("Game moved from results to in-progress, checking for new question...");
+
+              const nextQuestion = await this.getQuestion(gameId);
+              console.log("Fetched next question:", nextQuestion);
+
+              if (nextQuestion && nextQuestion.questionIndex > lastQuestionIndex) {
+                  lastQuestionIndex = nextQuestion.questionIndex;
+                  callback(nextQuestion, "in-progress");
+                  console.log("New question detected, stopping polling.");
+                  clearInterval(interval);
+              } else {
+                  console.log("New question not detected yet, continuing to poll...");
+              }
+          }
+      } catch (error) {
+          console.error("Error polling for next question:", error);
+      }
+  };
+
+  const interval = setInterval(checkForNextQuestion, 1000);
+
+  return () => {
+      console.log("Stopping polling for next question.");
+      clearInterval(interval);
+  };
+}
 
 
 

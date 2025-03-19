@@ -298,41 +298,46 @@ class GameManager {
   }
 
 
-
   nextQuestion(gameId: string): Question | null {
     Logger.info('Moving to next question', { gameId });
 
     const game = this.games.get(gameId);
-    if (!game || game.status !== 'results') {  // ✅ Ensure it only moves forward from "results"
-      Logger.warn('Next question failed - invalid game state', {
-        gameExists: !!game,
-        status: game?.status
-      });
-      return null;
+    if (!game || game.status !== 'results') {
+        Logger.warn('Next question failed - invalid game state', {
+            gameExists: !!game,
+            status: game?.status
+        });
+        return null;
     }
 
-    // ✅ Add a 3-second delay before moving to the next question
+    // ✅ Ensure transition happens after a short delay (to allow UI update)
     setTimeout(() => {
-      game.currentQuestionIndex++;
+        game.currentQuestionIndex++;
 
-      if (game.currentQuestionIndex >= game.questions.length) {
-        game.status = 'ended';
-        Logger.info('Game ended - all questions completed', { gameId });
-        return;
-      }
+        if (game.currentQuestionIndex >= game.questions.length) {
+            game.status = 'ended';
+            Logger.info('Game ended - all questions completed', { gameId });
+            return;
+        }
 
-      game.status = 'in-progress';
+        game.status = 'in-progress';
 
-      Logger.success('Advanced to next question', {
-        gameId,
-        questionIndex: game.currentQuestionIndex,
-        questionsRemaining: game.questions.length - game.currentQuestionIndex
-      });
+        Logger.success('Advanced to next question', {
+            gameId,
+            questionIndex: game.currentQuestionIndex,
+            questionsRemaining: game.questions.length - game.currentQuestionIndex
+        });
+    }, 3000); // ✅ Ensures results display for 3 seconds before moving on
 
-    }, 3000); // ✅ 3-second delay to let players see results
+    // ❌ PROBLEM: This returns the question **before** the game status changes!
+    // return game.questions[game.currentQuestionIndex];
 
-    return game.questions[game.currentQuestionIndex];
-  }
+    // ✅ FIX: Return **after** the setTimeout delay
+    return null; // The client should poll again and detect when the game status becomes "in-progress"
+}
+
+
+
 
 
 
