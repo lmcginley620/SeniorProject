@@ -31,7 +31,7 @@ const EnterTopicsPage: React.FC = () => {
 
   return (
     <div className="enter-topics-container">
-      <h1 className="room-code-display">Room Code: {roomCode}</h1>
+      {/* <h1 className="room-code-display">Room Code: {roomCode}</h1> */}
 
       <h1 className="enter-topics-title">Enter Trivia Topics</h1>
 
@@ -60,7 +60,7 @@ const EnterTopicsPage: React.FC = () => {
       </div>
 
       {error && <p className="error-message">{error}</p>}
-      
+
       <button className="start-trivia-button" onClick={createLobby} disabled={topics.length === 0}>
         Create Lobby
       </button>

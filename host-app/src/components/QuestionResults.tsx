@@ -120,7 +120,7 @@ export function QuestionResults() {
                     cx="50%"
                     cy="50%"
                     outerRadius={150}
-                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}                    fontSize={32}
+                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`} fontSize={32}
                   >
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index]} />

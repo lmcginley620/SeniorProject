@@ -8,11 +8,12 @@
   width: 100%;
   background-color: #0f0fd8;
   opacity: 0.8;
-  background-size: 20px 20px;
+  background-size: 100%;
   background-color: #1717bd;
   opacity: 0.8;
-  background-size: 20px 20px;
-  background-image: repeating-linear-gradient(to right, #000000, #444cf7 1px, #e5e5f7 1px, #e5e5f7);
+  /* background-size: 20px 20px; */
+  /* background-image: repeating-linear-gradient(to right, #000000, #444cf7 1px, #e5e5f7 1px, #e5e5f7); */
+  background-image: url('cool-background.png');
   color: white;
   text-align: center;
 }
@@ -45,6 +46,8 @@
   border-radius: 6px;
   border: none;
   text-align: center;
+  background-color: white;
+  color: black;
 }
 
 .add-topic-button {
