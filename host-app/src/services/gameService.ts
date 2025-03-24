@@ -55,24 +55,28 @@ class GameService {
   }
 
   // ✅ Step 2: Move the game to "lobby" so players can join
-  async createLobby(gameId: string): Promise<any> {
+  async createLobby(gameId: string, topics: string[]): Promise<any> {
     try {
-      console.log(`Creating lobby for game ID: ${gameId}`);
+      console.log(`Creating lobby for game ID: ${gameId} with topics:`, topics);
 
       const hostId = localStorage.getItem("hostId");
       if (!hostId) {
         throw new Error("Host ID not found in localStorage.");
       }
 
-      const response = await axios.post(`${API_BASE_URL}/games/${gameId}/lobby`, { hostId });
-      console.log("Lobby created successfully:", response.data);
+      const response = await axios.post(`${API_BASE_URL}/games/${gameId}/lobby`, {
+        hostId,
+        topics
+      });
 
+      console.log("Lobby created successfully with questions:", response.data.questions);
       return response.data;
     } catch (error: any) {
       console.error("Failed to create lobby:", error.response?.data || error.message);
       throw error;
     }
   }
+
 
   async startTrivia(gameId: string): Promise<any> {
     try {
@@ -212,77 +216,77 @@ class GameService {
 
   async getGameResults(gameId: string): Promise<{ question: string; results: Record<string, number> } | null> {
     try {
-        console.log(`Fetching results for game ${gameId}`);
-        const response = await axios.get(`${API_BASE_URL}/games/${gameId}/results`);
+      console.log(`Fetching results for game ${gameId}`);
+      const response = await axios.get(`${API_BASE_URL}/games/${gameId}/results`);
 
-        if (!response.data || !response.data.results) {
-            console.warn("No results data received.");
-            return null;
+      if (!response.data || !response.data.results) {
+        console.warn("No results data received.");
+        return null;
+      }
+
+      console.log("Received game results:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Failed to fetch game results:", error.response?.data || error.message);
+      return null;  // Prevents breaking the UI if results fail
+    }
+  }
+
+
+  async pollForNextQuestion(
+    gameId: string,
+    callback: (question: any, gameStatus: string) => void
+  ): Promise<() => void> {
+    console.log(`Starting polling for next question in game ${gameId}`);
+
+    let lastQuestionIndex = -1;
+    let waitingForResults = false;
+
+    const checkForNextQuestion = async () => {
+      try {
+        const status = await this.getGameStatus(gameId);
+
+        if (status === "ended") {
+          console.log("Game has ended, stopping polling.");
+          clearInterval(interval);
+          callback(null, "ended");
+          return;
         }
 
-        console.log("Received game results:", response.data);
-        return response.data;
-    } catch (error: any) {
-        console.error("Failed to fetch game results:", error.response?.data || error.message);
-        return null;  // Prevents breaking the UI if results fail
-    }
-}
+        if (status === "results") {
+          console.log("Game is in results phase, waiting...");
+          waitingForResults = true;
+          return;
+        }
 
+        // ✅ Keep polling until the new question actually changes
+        if (waitingForResults && status === "in-progress") {
+          console.log("Game moved from results to in-progress, checking for new question...");
 
-async pollForNextQuestion(
-  gameId: string,
-  callback: (question: any, gameStatus: string) => void
-): Promise<() => void> {
-  console.log(`Starting polling for next question in game ${gameId}`);
+          const nextQuestion = await this.getQuestion(gameId);
+          console.log("Fetched next question:", nextQuestion);
 
-  let lastQuestionIndex = -1;
-  let waitingForResults = false;
-
-  const checkForNextQuestion = async () => {
-      try {
-          const status = await this.getGameStatus(gameId);
-
-          if (status === "ended") {
-              console.log("Game has ended, stopping polling.");
-              clearInterval(interval);
-              callback(null, "ended");
-              return;
+          if (nextQuestion && nextQuestion.questionIndex > lastQuestionIndex) {
+            lastQuestionIndex = nextQuestion.questionIndex;
+            callback(nextQuestion, "in-progress");
+            console.log("New question detected, stopping polling.");
+            clearInterval(interval);
+          } else {
+            console.log("New question not detected yet, continuing to poll...");
           }
-
-          if (status === "results") {
-              console.log("Game is in results phase, waiting...");
-              waitingForResults = true;
-              return;
-          }
-
-          // ✅ Keep polling until the new question actually changes
-          if (waitingForResults && status === "in-progress") {
-              console.log("Game moved from results to in-progress, checking for new question...");
-
-              const nextQuestion = await this.getQuestion(gameId);
-              console.log("Fetched next question:", nextQuestion);
-
-              if (nextQuestion && nextQuestion.questionIndex > lastQuestionIndex) {
-                  lastQuestionIndex = nextQuestion.questionIndex;
-                  callback(nextQuestion, "in-progress");
-                  console.log("New question detected, stopping polling.");
-                  clearInterval(interval);
-              } else {
-                  console.log("New question not detected yet, continuing to poll...");
-              }
-          }
+        }
       } catch (error) {
-          console.error("Error polling for next question:", error);
+        console.error("Error polling for next question:", error);
       }
-  };
+    };
 
-  const interval = setInterval(checkForNextQuestion, 1000);
+    const interval = setInterval(checkForNextQuestion, 1000);
 
-  return () => {
+    return () => {
       console.log("Stopping polling for next question.");
       clearInterval(interval);
-  };
-}
+    };
+  }
 
 
 
