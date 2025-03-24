@@ -53,7 +53,7 @@
 .leaderboard-table thead {
     background-color: white;
     /* Dark header */
-    color: white;
+    color: rgb(0, 0, 0);
     text-transform: uppercase;
     font-size: 1.2rem;
     /* Larger font size */

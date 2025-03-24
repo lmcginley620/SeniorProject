@@ -11,6 +11,7 @@ const QuestionPage: React.FC = () => {
   const initialQuestion = location.state?.question || null;
 
   const [question, setQuestion] = useState(initialQuestion);
+const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
 
   useEffect(() => {
     document.body.classList.add("question-page-body");
@@ -59,7 +60,7 @@ const QuestionPage: React.FC = () => {
   return (
     <div className="question-page-wrapper">
       <div className="content-wrapper">
-        <div className="question-number">Question #1</div>
+        <div className="question-number">Question #{currentQuestionIndex}</div>
         <div className="question-page-container">
           <div className="question-box">
             <h1>{question.text}</h1>

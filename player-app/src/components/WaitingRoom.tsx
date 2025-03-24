@@ -32,12 +32,14 @@ const WaitingRoom: React.FC = () => {
 
   return (
     <div className="waiting-room-container">
-      <h1>Waiting for Host to Start...</h1>
+      <h1 className="game-title">TRIVIA FUSION</h1>
+      <h2>Waiting for Host to Start...</h2>
       <p>Room Code: {roomCode}</p>
-      <p>Hello, {playerName}! The game will start soon.</p>
+      <p>Hi {playerName}!</p>
       <p className="loading-dots">● ● ●</p>
     </div>
   );
+  
 };
 
 export default WaitingRoom;

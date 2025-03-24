@@ -98,13 +98,13 @@ const QuestionAnswerPage: React.FC = () => {
   return (
     <div className="question-page">
       {answerSubmitted ? (
-        <h1 className="answer-submitted-text">Answer Submitted ✔</h1>
+        <h1 className="answer-submitted-text">Answer Submitted</h1>
       ) : (
         <div className="answers">
           {question.options.map((option: string, index: number) => (
             <button
               key={index}
-              className={`answer ${["red", "blue", "green", "yellow"][index]}`}
+              className={`answer ${["blue", "green", "yellow", "red"][index]}`}
               onClick={() => handleSubmitAnswer(option)}
             >
               {option}

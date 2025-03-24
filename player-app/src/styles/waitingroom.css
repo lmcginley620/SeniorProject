@@ -1,0 +1,64 @@
+/* Ensures full-screen and prevents scrolling */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.waiting-room-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  color: white;
+  text-align: center;
+  font-family: 'Arial', sans-serif;
+  overflow: hidden;
+}
+
+/* Large game title styling */
+.game-title {
+  font-size: 4rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 20px;
+  text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 1s ease-in-out;
+  color: #ff6f61;
+}
+
+/* Secondary heading for waiting message */
+h2 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+/* Paragraph text */
+p {
+  font-size: 1.2rem;
+  margin: 5px 0;
+}
+
+/* Loading animation */
+.loading-dots {
+  font-size: 2rem;
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Fade-in animation for title */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

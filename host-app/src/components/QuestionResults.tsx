@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { gameService } from "../services/gameService";
-import { Pie, PieChart, Cell } from "recharts";
+import { Pie, PieChart, Cell, ResponsiveContainer } from "recharts";
 import {
   Card,
   CardContent,
@@ -20,7 +20,9 @@ import {
 } from "@/components/ui/chart";
 import { TrendingUp } from "lucide-react";
 
-// ✅ Colors for each answer
+import "../styles/questionresults.css";
+
+// ✅ Colors for each answer option
 const COLORS = ["#e74c3c", "#f1c40f", "#2ecc71", "#3498db"]; // Red, Yellow, Green, Blue
 
 export function QuestionResults() {
@@ -30,6 +32,7 @@ export function QuestionResults() {
 
   const [chartData, setChartData] = useState<any[]>([]);
   const [questionText, setQuestionText] = useState<string>("Loading...");
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [gameStatus, setGameStatus] = useState<string>("results");
 
   useEffect(() => {
@@ -46,6 +49,11 @@ export function QuestionResults() {
 
           setChartData(formattedData);
           setQuestionText(response.question);
+
+          // Fetch leaderboard data
+          const leaderboardData = await gameService.getPlayers(roomCode);
+          leaderboardData.sort((a: any, b: any) => b.score - a.score); // Sort by score (highest to lowest)
+          setLeaderboard(leaderboardData);
         } else {
           console.warn("No results received.");
         }
@@ -79,7 +87,7 @@ export function QuestionResults() {
     return () => clearInterval(pollStatus);
   }, [roomCode, navigate]);
 
-  // ✅ Define Chart Config
+  // ✅ Define Chart Configuration before using it in JSX
   const chartConfig = {
     votes: {
       label: "Votes",
@@ -91,48 +99,75 @@ export function QuestionResults() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-[#1e3c72] bg-cover bg-center">
-      <Card className="flex flex-col w-[900px] h-[750px] p-8 shadow-xl rounded-lg bg-white dark:bg-gray-800">
-        <CardHeader className="items-center pb-4 text-center">
-          <CardTitle className="text-gray-900 dark:text-white text-4xl font-bold">
-            {questionText}
-          </CardTitle>
-        </CardHeader>
+    <div className="results-page-bg">
+      <div className="flex justify-center items-center min-h-screen">
+        <Card className="flex flex-row w-[1100px] h-[750px] p-8 shadow-xl rounded-lg bg-white dark:bg-gray-800">
 
-        <CardContent className="flex flex-col items-center">
-          <ChartContainer config={chartConfig} className="mx-auto w-[500px] h-[450px]">
-            <PieChart width={500} height={500}>
-              <Pie
-                data={chartData}
-                dataKey="votes"
-                cx="50%"
-                cy="50%"
-                outerRadius={150}
-                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                fontSize={32}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index]} />
-                ))}
-              </Pie>
-              <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-              <ChartLegend
-                verticalAlign="bottom"
-                align="center"
-                content={<ChartLegendContent nameKey="name" />}
-                className="text-2xl text-gray-800 dark:text-white"
-              />
-            </PieChart>
-          </ChartContainer>
-        </CardContent>
+          {/* Left Side: Pie Chart (Shifted slightly to the left) */}
+          <div className="flex flex-col w-2/3 items-end pr-12">
+            <CardHeader className="flex justify-center items-center pb-4 text-center w-full">
+              <CardTitle className="text-gray-900 dark:text-white text-4xl font-bold">
+                {questionText}
+              </CardTitle>
+            </CardHeader>
 
-        <CardFooter className="flex flex-col items-center gap-3 text-md text-gray-600 dark:text-gray-400">
-          <div className="flex items-center gap-2 font-semibold">
-            Results will display for 5 seconds <TrendingUp className="h-6 w-6" />
+            <CardContent className="flex flex-col items-center">
+              <ChartContainer config={chartConfig} className="mx-auto w-[500px] h-[450px]">
+                <PieChart width={500} height={500}>
+                  <Pie
+                    data={chartData}
+                    dataKey="votes"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={150}
+                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}                    fontSize={32}
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                  <ChartLegend
+                    verticalAlign="bottom"
+                    align="center"
+                    content={<ChartLegendContent nameKey="name" />}
+                    className="text-4xl text-gray-800 dark:text-white mt-6"
+                  />
+                </PieChart>
+              </ChartContainer>
+            </CardContent>
+
           </div>
-          <div>Next question will load automatically.</div>
-        </CardFooter>
-      </Card>
+
+          {/* Right Side: Leaderboard (Spaced more to the right) */}
+          <div className="flex flex-col w-1/3 items-center border-l border-gray-300 pl-12">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Leaderboard</h2>
+            <div className="w-full">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-300">
+                    <th className="px-4 py-2 text-lg text-gray-700">#</th>
+                    <th className="px-4 py-2 text-lg text-gray-700">Name</th>
+                    <th className="px-4 py-2 text-lg text-gray-700">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.map((player, index) => (
+                    <tr key={player.id} className="border-b border-gray-200">
+                      <td className="px-4 py-2 text-lg text-gray-900 dark:text-white font-semibold">
+                        {index + 1}
+                      </td>
+                      <td className="px-4 py-2 text-lg text-gray-900 dark:text-white">{player.name}</td>
+                      <td className="px-4 py-2 text-lg text-gray-900 dark:text-white">{player.score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </Card>
+      </div>
     </div>
   );
 }
