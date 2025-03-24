@@ -89,7 +89,11 @@
   padding: 15px 20px;
   font-size: 1.6rem;
   font-weight: bold;
+<<<<<<< HEAD
   color: white;
+=======
+  color: rgb(255, 255, 255);
+>>>>>>> 9f410b99a55f0a4e9df98c43d4ed89ed5e2b1bf1
   border: none;
   border-radius: 8px;
   display: flex;
