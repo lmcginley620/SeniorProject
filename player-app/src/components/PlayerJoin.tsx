@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/playerjoin.css";
-import { gameService } from "../services/gameService.ts"; 
+import { gameService } from "../services/gameService.ts";
 
 const PlayerPage: React.FC = () => {
   const [roomCode, setRoomCode] = useState("");

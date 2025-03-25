@@ -39,7 +39,7 @@ const WaitingRoom: React.FC = () => {
       <p className="loading-dots">● ● ●</p>
     </div>
   );
-  
+
 };
 
 export default WaitingRoom;

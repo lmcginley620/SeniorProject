@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { gameService } from "../services/gameService";
 import "../styles/questionpage.css";
@@ -13,6 +13,8 @@ const QuestionAnswerPage: React.FC = () => {
   const [answerSubmitted, setAnswerSubmitted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(-1);
   const [isPolling, setIsPolling] = useState(false);
+  const stopPollingRef = useRef<() => void | null>(null);
+
 
   // ✅ Fetch the current question when the page loads
   useEffect(() => {
@@ -60,11 +62,12 @@ const QuestionAnswerPage: React.FC = () => {
 
         stopPolling = await gameService.pollForNextQuestion(roomCode, (nextQuestion, gameStatus) => {
           if (gameStatus === "ended") {
-            console.log("Game has ended, navigating to leaderboard.");
-            if (stopPolling) stopPolling();
-            navigate("/leaderboard", { state: { roomCode } });
+            stopPollingRef.current?.();
+            navigate("/game-over");
             return;
           }
+
+          console.log("Game has ended, navigating to leaderboard.");
 
           if (gameStatus === "results") {
             console.log("Game in results phase, waiting for host to move forward.");

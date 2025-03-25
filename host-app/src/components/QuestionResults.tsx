@@ -65,27 +65,35 @@ export function QuestionResults() {
     fetchResults();
   }, [roomCode]);
 
-  // ✅ Poll for next game status
   useEffect(() => {
-    const pollStatus = setInterval(async () => {
-      try {
-        const status = await gameService.getGameStatus(roomCode);
-        console.log("Polled game status:", status);
+    const intervalRef = { current: 0 };
 
-        if (status === "in-progress") {
-          clearInterval(pollStatus);
-          navigate("/question", { state: { roomCode } });
-        } else if (status === "ended") {
-          clearInterval(pollStatus);
-          navigate("/leaderboard");
+    const startPolling = () => {
+      intervalRef.current = window.setInterval(async () => {
+        try {
+          const status = await gameService.getGameStatus(roomCode);
+          console.log("[HOST] Polled game status:", status);
+
+          if (status === "in-progress") {
+            clearInterval(intervalRef.current);
+            navigate("/question", { state: { roomCode } });
+          } else if (status === "ended") {
+            clearInterval(intervalRef.current);
+            navigate("/leaderboard", { state: { roomCode } });
+          }
+        } catch (error) {
+          console.error("Error checking game status:", error);
         }
-      } catch (error) {
-        console.error("Error checking game status:", error);
-      }
-    }, 1000); // ✅ Poll every second
+      }, 1000);
+    };
 
-    return () => clearInterval(pollStatus);
+    startPolling();
+
+    return () => {
+      clearInterval(intervalRef.current);
+    };
   }, [roomCode, navigate]);
+
 
   // ✅ Define Chart Configuration before using it in JSX
   const chartConfig = {
@@ -101,31 +109,53 @@ export function QuestionResults() {
   return (
     <div className="results-page-bg">
       <div className="flex justify-center items-center min-h-screen">
-        <Card className="flex flex-row w-[1100px] h-[750px] p-8 shadow-xl rounded-lg bg-white dark:bg-gray-800">
+        <Card className="flex flex-row w-[1400px] h-[750px] p-8 shadow-xl rounded-lg bg-white dark:bg-gray-800">
 
           {/* Left Side: Pie Chart (Shifted slightly to the left) */}
-          <div className="flex flex-col w-2/3 items-end pr-12">
+          <div className="flex flex-col w-2/3 items-center pr-12">
             <CardHeader className="flex justify-center items-center pb-4 text-center w-full">
               <CardTitle className="text-gray-900 dark:text-white text-4xl font-bold">
                 {questionText}
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="flex flex-col items-center">
-              <ChartContainer config={chartConfig} className="mx-auto w-[500px] h-[450px]">
+            <CardContent className="flex flex-col items-center mt-6">
+              <ChartContainer config={chartConfig} className="mx-auto w-[500px] h-[450px] mt-6">
                 <PieChart width={500} height={500}>
                   <Pie
                     data={chartData}
                     dataKey="votes"
                     cx="50%"
-                    cy="50%"
+                    cy="55%"
                     outerRadius={150}
-                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`} fontSize={32}
+                    labelLine={false}
+                    label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
+                      if (percent === 0) return null;
+                      const RADIAN = Math.PI / 180;
+                      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          fill="white"
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fontSize={40}
+                          fontWeight="bold"
+                        >
+                          {(percent * 100).toFixed(0)}%
+                        </text>
+                      );
+                    }}
                   >
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index]} />
                     ))}
                   </Pie>
+
                   <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                   <ChartLegend
                     verticalAlign="bottom"
@@ -171,3 +201,5 @@ export function QuestionResults() {
     </div>
   );
 }
+
+
