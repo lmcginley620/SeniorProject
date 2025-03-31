@@ -20,7 +20,7 @@ export const gameService = {
 
       console.log("Joined game:", response.data);
 
-      localStorage.setItem("playerId", response.data.id); // ✅ Store playerId
+      localStorage.setItem("playerId", response.data.id);
 
       return response.data;
     } catch (error: any) {
@@ -67,7 +67,7 @@ export const gameService = {
         return {
           text: response.data.text,
           options: response.data.options,
-          questionIndex: response.data.questionIndex ?? 0, // ✅ Ensure questionIndex exists
+          questionIndex: response.data.questionIndex ?? 0,
         };
       }
 

@@ -13,21 +13,16 @@
 
 }
 
-/* Leaderboard Content (Title + Table) */
 .leaderboard-content {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 90%;
-    /* Make the container larger */
     max-width: 1000px;
-    /* Adjust width of the content */
 }
 
-/* Leaderboard Title */
 .leaderboard-title {
     font-size: 2.5rem;
-    /* Increase title size */
     font-weight: bold;
     text-align: center;
     color: #000000;
@@ -35,21 +30,16 @@
     margin-bottom: 30px;
 }
 
-/* Table Styling */
 .leaderboard-table {
     width: 100%;
     max-width: 900px;
-    /* Increase max width of table */
     background-color: white;
     border-radius: 12px;
-    /* Rounded corners */
     /* box-shadow: 0 6px 12px rgba(255, 255, 255, 0.15); */
-    /* Stronger shadow for emphasis */
     overflow: hidden;
     padding: 20px;
 }
 
-/* Table Header */
 .leaderboard-table thead {
     background-color: white;
     /* Dark header */
@@ -60,19 +50,15 @@
     font-weight: bold;
 }
 
-/* Table Cells */
 .leaderboard-table th,
 .leaderboard-table td {
     padding: 16px;
-    /* Increase cell padding for better spacing */
     font-size: 1.2rem;
-    /* Bigger font */
     text-align: center;
     border-bottom: 1px solid #ddd;
 }
 
 
-/* Ensure Last Row Has No Border */
 .leaderboard-table tbody tr:last-child td {
     border-bottom: none;
 }

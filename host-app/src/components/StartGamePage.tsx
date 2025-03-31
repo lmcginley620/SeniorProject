@@ -36,11 +36,10 @@ const StartGamePage: React.FC = () => {
       <button
         onClick={handleStartGame}
         disabled={isLoading}
-        className={`px-8 py-4 text-xl font-semibold rounded-lg ${
-          isLoading
+        className={`px-8 py-4 text-xl font-semibold rounded-lg ${isLoading
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-green-500 hover:bg-green-600 active:bg-green-700'
-        } text-white transition-colors shadow-lg hover:shadow-xl`}
+          } text-white transition-colors shadow-lg hover:shadow-xl`}
       >
         {isLoading ? 'Creating Game...' : 'Start New Game'}
       </button>

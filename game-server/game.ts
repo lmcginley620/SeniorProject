@@ -223,7 +223,6 @@ class GameManager {
       return false;
     }
 
-    // ✅ Assign mock questions if none exist
     if (game.questions.length === 0) {
       Logger.info("Assigning mock questions to game", { gameId });
       game.questions = [...mockQuestions];
@@ -234,9 +233,6 @@ class GameManager {
 
     return true;
   }
-
-
-
 
 
   submitAnswer(gameId: string, playerId: string, answer: string): boolean {
@@ -256,20 +252,17 @@ class GameManager {
 
     const currentQuestion = game.questions[game.currentQuestionIndex];
 
-    // Prevent duplicate answers
     if (player.answers.some(a => a.questionIndex === game.currentQuestionIndex)) {
       Logger.warn('Duplicate answer detected', { gameId, playerId });
       return false;
     }
 
-    // Record the player's answer
     player.answers.push({
       questionIndex: game.currentQuestionIndex,
       answer,
       timestamp: new Date()
     });
 
-    // ✅ Award points if correct
     if (currentQuestion.options[currentQuestion.correctAnswer] === answer) {
       player.score += 100;
       Logger.success('Correct answer submitted', { gameId, playerId, newScore: player.score });
@@ -277,7 +270,6 @@ class GameManager {
       Logger.info('Incorrect answer submitted', { gameId, playerId });
     }
 
-    // ✅ Check if all players have submitted answers
     const allAnswered = game.players.every(p =>
       p.answers.some(a => a.questionIndex === game.currentQuestionIndex)
     );
@@ -285,10 +277,8 @@ class GameManager {
     if (allAnswered) {
       Logger.success('All players have submitted answers, moving to results phase', { gameId });
 
-      // ✅ Transition game state to results phase
       game.status = 'results';
 
-      // ✅ Automatically move to the next question after 5 seconds
       setTimeout(() => {
         this.nextQuestion(gameId);
       }, 5000);
@@ -303,38 +293,33 @@ class GameManager {
 
     const game = this.games.get(gameId);
     if (!game || game.status !== 'results') {
-        Logger.warn('Next question failed - invalid game state', {
-            gameExists: !!game,
-            status: game?.status
-        });
-        return null;
+      Logger.warn('Next question failed - invalid game state', {
+        gameExists: !!game,
+        status: game?.status
+      });
+      return null;
     }
 
-    // ✅ Ensure transition happens after a short delay (to allow UI update)
     setTimeout(() => {
-        game.currentQuestionIndex++;
+      game.currentQuestionIndex++;
 
-        if (game.currentQuestionIndex >= game.questions.length) {
-            game.status = 'ended';
-            Logger.info('Game ended - all questions completed', { gameId });
-            return;
-        }
+      if (game.currentQuestionIndex >= game.questions.length) {
+        game.status = 'ended';
+        Logger.info('Game ended - all questions completed', { gameId });
+        return;
+      }
 
-        game.status = 'in-progress';
+      game.status = 'in-progress';
 
-        Logger.success('Advanced to next question', {
-            gameId,
-            questionIndex: game.currentQuestionIndex,
-            questionsRemaining: game.questions.length - game.currentQuestionIndex
-        });
-    }, 3000); // ✅ Ensures results display for 3 seconds before moving on
+      Logger.success('Advanced to next question', {
+        gameId,
+        questionIndex: game.currentQuestionIndex,
+        questionsRemaining: game.questions.length - game.currentQuestionIndex
+      });
+    }, 3000);
 
-    // ❌ PROBLEM: This returns the question **before** the game status changes!
-    // return game.questions[game.currentQuestionIndex];
-
-    // ✅ FIX: Return **after** the setTimeout delay
-    return null; // The client should poll again and detect when the game status becomes "in-progress"
-}
+    return null;
+  }
 
 
 
@@ -514,7 +499,6 @@ router.get('/games/:id/results', (req, res) => {
 
   const game = gameManager.getGame(gameId);
 
-  // ✅ Fix: Ensure results are fetched when the game is in "results" phase
   if (!game || game.status !== 'results') {
     Logger.warn('Get results request failed - game is not in results phase', { gameId, status: game?.status });
     res.status(400).json({ error: 'Game is not in results phase' });
@@ -523,7 +507,6 @@ router.get('/games/:id/results', (req, res) => {
 
   const currentQuestion = game.questions[game.currentQuestionIndex];
 
-  // ✅ Count the answers submitted by players
   const answerCounts: Record<string, number> = {};
   currentQuestion.options.forEach((option) => {
     answerCounts[option] = 0;
@@ -541,8 +524,6 @@ router.get('/games/:id/results', (req, res) => {
   Logger.success('Results retrieved successfully', { gameId, results: answerCounts });
   res.json({ question: currentQuestion.text, results: answerCounts });
 });
-
-
 
 
 router.get("/games/:id/status", (req, res) => {
@@ -609,6 +590,8 @@ router.post('/games/:id/next-question', (req, res) => {
   Logger.success('Moved to next question', { gameId, question: nextQuestion });
   res.json({ status: 'in-progress', question: nextQuestion });
 });
+
+
 
 
 export default router;

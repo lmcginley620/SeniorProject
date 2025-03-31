@@ -2,12 +2,11 @@
 "use client";
 
 import React from "react";
-import { Payment, columns } from "./columns";
+import { score, columns } from "./columns";
 import { DataTable } from "./data-table";
-import "../../styles/leaderboard.css"; // Ensure CSS is imported
+import "../../styles/leaderboard.css";
 
-// Simulate getting leaderboard data from an API
-async function getData(): Promise<Payment[]> {
+async function getData(): Promise<score[]> {
     return [
         { position: "1", score: 100, username: "player1" },
         { position: "2", score: 200, username: "player2" },
@@ -16,9 +15,8 @@ async function getData(): Promise<Payment[]> {
 }
 
 const Leaderboard: React.FC = () => {
-    const [data, setData] = React.useState<Payment[]>([]);
+    const [data, setData] = React.useState<score[]>([]);
 
-    // Fetch leaderboard data on mount
     React.useEffect(() => {
         getData().then(setData);
     }, []);
@@ -27,7 +25,7 @@ const Leaderboard: React.FC = () => {
         <div className="leaderboard-container">
             <div className="leaderboard-content">
                 <h1 className="leaderboard-title">Leaderboard</h1>
-                <DataTable columns={columns} data={data} /> {/* Display the leaderboard data */}
+                <DataTable columns={columns} data={data} />
             </div>
         </div>
     );

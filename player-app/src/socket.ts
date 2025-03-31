@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-console.log("🔌 Initializing WebSocket connection...");
+console.log(" Initializing WebSocket connection...");
 
 const socket = io("http://localhost:5000", {
   transports: ["websocket", "polling"],

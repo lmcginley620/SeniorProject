@@ -20,10 +20,12 @@ import {
 } from "@/components/ui/chart";
 import { TrendingUp } from "lucide-react";
 
+import { Progress } from "@/components/ui/progress";
+
+
 import "../styles/questionresults.css";
 
-// ✅ Colors for each answer option
-const COLORS = ["#e74c3c", "#f1c40f", "#2ecc71", "#3498db"]; // Red, Yellow, Green, Blue
+const COLORS = ["#e74c3c", "#f1c40f", "#2ecc71", "#3498db"];
 
 export function QuestionResults() {
   const location = useLocation();
@@ -34,6 +36,24 @@ export function QuestionResults() {
   const [questionText, setQuestionText] = useState<string>("Loading...");
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [gameStatus, setGameStatus] = useState<string>("results");
+
+  const [progress, setProgress] = useState(100);
+
+  useEffect(() => {
+    const totalTime = 10; // seconds
+    const tick = 1000; // ms
+    let elapsed = 0;
+
+    const interval = setInterval(() => {
+      elapsed += 1;
+      setProgress(100 - (elapsed / totalTime) * 100);
+
+      if (elapsed >= totalTime) clearInterval(interval);
+    }, tick);
+
+    return () => clearInterval(interval);
+  }, []);
+
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -50,9 +70,8 @@ export function QuestionResults() {
           setChartData(formattedData);
           setQuestionText(response.question);
 
-          // Fetch leaderboard data
           const leaderboardData = await gameService.getPlayers(roomCode);
-          leaderboardData.sort((a: any, b: any) => b.score - a.score); // Sort by score (highest to lowest)
+          leaderboardData.sort((a: any, b: any) => b.score - a.score);
           setLeaderboard(leaderboardData);
         } else {
           console.warn("No results received.");
@@ -95,7 +114,6 @@ export function QuestionResults() {
   }, [roomCode, navigate]);
 
 
-  // ✅ Define Chart Configuration before using it in JSX
   const chartConfig = {
     votes: {
       label: "Votes",
@@ -108,95 +126,102 @@ export function QuestionResults() {
 
   return (
     <div className="results-page-bg">
-      <div className="flex justify-center items-center min-h-screen">
-        <Card className="flex flex-row w-[1400px] h-[750px] p-8 shadow-xl rounded-lg bg-white dark:bg-gray-800">
 
-          {/* Left Side: Pie Chart (Shifted slightly to the left) */}
-          <div className="flex flex-col w-2/3 items-center pr-12">
-            <CardHeader className="flex justify-center items-center pb-4 text-center w-full">
-              <CardTitle className="text-gray-900 dark:text-white text-4xl font-bold">
-                {questionText}
-              </CardTitle>
-            </CardHeader>
+      <div className="w-full max-w-[1400px] mx-auto pt-12 px-4">
+        {/* Progress bar on top */}
+        <div className="mb-6">
+          <Progress value={progress} className="h-3 rounded-full bg-gray-200 transition-all duration-700"></Progress>
 
-            <CardContent className="flex flex-col items-center mt-6">
-              <ChartContainer config={chartConfig} className="mx-auto w-[500px] h-[450px] mt-6">
-                <PieChart width={500} height={500}>
-                  <Pie
-                    data={chartData}
-                    dataKey="votes"
-                    cx="50%"
-                    cy="55%"
-                    outerRadius={150}
-                    labelLine={false}
-                    label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
-                      if (percent === 0) return null;
-                      const RADIAN = Math.PI / 180;
-                      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+        </div>
 
-                      return (
-                        <text
-                          x={x}
-                          y={y}
-                          fill="white"
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          fontSize={40}
-                          fontWeight="bold"
-                        >
-                          {(percent * 100).toFixed(0)}%
-                        </text>
-                      );
-                    }}
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index]} />
-                    ))}
-                  </Pie>
+        <div className="flex justify-center items-center min-h-screen">
+          <Card className="flex flex-row w-[1400px] h-[750px] p-8 shadow-xl rounded-lg bg-white dark:bg-gray-800">
 
-                  <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                  <ChartLegend
-                    verticalAlign="bottom"
-                    align="center"
-                    content={<ChartLegendContent nameKey="name" />}
-                    className="text-4xl text-gray-800 dark:text-white mt-6"
-                  />
-                </PieChart>
-              </ChartContainer>
-            </CardContent>
+            <div className="flex flex-col w-2/3 items-center pr-12">
+              <CardHeader className="flex justify-center items-center pb-4 text-center w-full">
+                <CardTitle className="text-gray-900 dark:text-white text-4xl font-bold">
+                  {questionText}
+                </CardTitle>
+              </CardHeader>
 
-          </div>
+              <CardContent className="flex flex-col items-center mt-6">
+                <ChartContainer config={chartConfig} className="mx-auto w-[500px] h-[450px] mt-6">
+                  <PieChart width={500} height={500}>
+                    <Pie
+                      data={chartData}
+                      dataKey="votes"
+                      cx="50%"
+                      cy="55%"
+                      outerRadius={150}
+                      labelLine={false}
+                      label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
+                        if (percent === 0) return null;
+                        const RADIAN = Math.PI / 180;
+                        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-          {/* Right Side: Leaderboard (Spaced more to the right) */}
-          <div className="flex flex-col w-1/3 items-center border-l border-gray-300 pl-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Leaderboard</h2>
-            <div className="w-full">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-300">
-                    <th className="px-4 py-2 text-lg text-gray-700">#</th>
-                    <th className="px-4 py-2 text-lg text-gray-700">Name</th>
-                    <th className="px-4 py-2 text-lg text-gray-700">Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map((player, index) => (
-                    <tr key={player.id} className="border-b border-gray-200">
-                      <td className="px-4 py-2 text-lg text-gray-900 dark:text-white font-semibold">
-                        {index + 1}
-                      </td>
-                      <td className="px-4 py-2 text-lg text-gray-900 dark:text-white">{player.name}</td>
-                      <td className="px-4 py-2 text-lg text-gray-900 dark:text-white">{player.score}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            fill="white"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fontSize={40}
+                            fontWeight="bold"
+                          >
+                            {(percent * 100).toFixed(0)}%
+                          </text>
+                        );
+                      }}
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index]} />
+                      ))}
+                    </Pie>
+
+                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                    <ChartLegend
+                      verticalAlign="bottom"
+                      align="center"
+                      content={<ChartLegendContent nameKey="name" />}
+                      className="text-4xl text-gray-800 dark:text-white mt-6"
+                    />
+                  </PieChart>
+                </ChartContainer>
+              </CardContent>
+
             </div>
-          </div>
 
-        </Card>
+            <div className="flex flex-col w-1/3 items-center border-l border-gray-300 pl-12">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Leaderboard</h2>
+              <div className="w-full">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-300">
+                      <th className="px-4 py-2 text-lg text-gray-700">#</th>
+                      <th className="px-4 py-2 text-lg text-gray-700">Name</th>
+                      <th className="px-4 py-2 text-lg text-gray-700">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboard.map((player, index) => (
+                      <tr key={player.id} className="border-b border-gray-200">
+                        <td className="px-4 py-2 text-lg text-gray-900 dark:text-white font-semibold">
+                          {index + 1}
+                        </td>
+                        <td className="px-4 py-2 text-lg text-gray-900 dark:text-white">{player.name}</td>
+                        <td className="px-4 py-2 text-lg text-gray-900 dark:text-white">{player.score}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </Card>
+        </div>
       </div>
     </div>
   );

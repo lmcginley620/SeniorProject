@@ -1,7 +1,7 @@
 // src/components/GameOver.tsx
 import React from "react";
 import "../styles/gameover.css"
-import "../styles/playerjoin.css"; // if you want to split styles cleanly
+import "../styles/playerjoin.css";
 
 const GameOver: React.FC = () => {
     return (

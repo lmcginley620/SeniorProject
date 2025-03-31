@@ -16,7 +16,6 @@ const QuestionAnswerPage: React.FC = () => {
   const stopPollingRef = useRef<() => void | null>(null);
 
 
-  // ✅ Fetch the current question when the page loads
   useEffect(() => {
     const fetchQuestion = async () => {
       try {
@@ -24,7 +23,7 @@ const QuestionAnswerPage: React.FC = () => {
         const response = await gameService.getCurrentQuestion(roomCode);
 
         if (response) {
-          setQuestion({ ...response }); // ✅ Ensure a new object reference for React to detect state change
+          setQuestion({ ...response });
           setCurrentQuestionIndex(response.questionIndex ?? 0);
         }
       } catch (error) {
@@ -35,9 +34,8 @@ const QuestionAnswerPage: React.FC = () => {
     fetchQuestion();
   }, [roomCode]);
 
-  // ✅ Handle answer submission
   const handleSubmitAnswer = async (answer: string) => {
-    if (answerSubmitted) return; // ✅ Prevent multiple submissions
+    if (answerSubmitted) return;
 
     const playerId = localStorage.getItem("playerId");
     if (!roomCode || !playerId) return;
@@ -52,7 +50,6 @@ const QuestionAnswerPage: React.FC = () => {
     }
   };
 
-  // ✅ Poll for the next question
   useEffect(() => {
     let stopPolling: (() => void) | null = null;
 
