@@ -11,6 +11,7 @@ const EnterTopicsPage: React.FC = () => {
   const [topics, setTopics] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false); // ✅ added
 
   const addTopic = () => {
     if (inputValue.trim() !== '') {
@@ -20,19 +21,19 @@ const EnterTopicsPage: React.FC = () => {
   };
 
   const createLobby = async () => {
+    setLoading(true); // ✅ start loading
     try {
       console.log("Creating lobby...");
       await gameService.createLobby(roomCode, topics);
       navigate('/lobby', { state: { roomCode, topics } });
     } catch (err) {
       setError('Failed to create lobby. Please try again.');
+      setLoading(false); // ✅ stop loading if failed
     }
   };
 
   return (
     <div className="enter-topics-container">
-      {/* <h1 className="room-code-display">Room Code: {roomCode}</h1> */}
-
       <h1 className="enter-topics-title">Enter Trivia Topics</h1>
 
       <div className="topics-input-section">
@@ -64,6 +65,14 @@ const EnterTopicsPage: React.FC = () => {
       <button className="start-trivia-button" onClick={createLobby} disabled={topics.length === 0}>
         Create Lobby
       </button>
+
+      {/* ✅ Loading message and dots */}
+      {loading && (
+        <div className="loading-section">
+          <p className="loading-message">Generating Quiz</p>
+          <div className="loading-dots">● ● ●</div>
+        </div>
+      )}
     </div>
   );
 };
