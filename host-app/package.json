@@ -25,6 +25,7 @@
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "framer-motion": "^12.6.3",
     "lucide-react": "^0.479.0",
     "node": "^23.8.0",
     "qrcode.react": "^4.2.0",
