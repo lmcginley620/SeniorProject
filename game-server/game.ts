@@ -1,6 +1,6 @@
 import express from 'express';
 import { Router } from 'express';
-import { OpenAI } from 'openai';
+import { Anthropic } from '@anthropic-ai/sdk';
 import { v4 as uuidv4 } from 'uuid';
 
 // Type Definitions
@@ -89,14 +89,13 @@ class Logger {
 
 class GameManager {
   private games: Map<string, Game>;
-  private openai: OpenAI | null;
+  private anthropic: Anthropic | null;
   private debugMode: boolean;
-
 
   constructor(apiKey: string, debug: boolean = false) {
     this.games = new Map();
     this.debugMode = debug;
-    this.openai = debug ? null : new OpenAI({ apiKey });
+    this.anthropic = debug ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
     Logger.info(`Game Manager initialized in ${debug ? 'debug' : 'production'} mode`);
   }
 
@@ -105,9 +104,7 @@ class GameManager {
     const gameId = this.generateGameCode();
 
     try {
-      // const questions = this.debugMode ?
-      //   await this.generateQuestions(topics);
-      const questions: Question[] = []; // 
+      // const questions: Question[] = this.debugMode ? mockQuestions : await this.generateQuestions(topics);
 
       const game: Game = {
         id: gameId,
@@ -115,7 +112,7 @@ class GameManager {
         status: 'waiting',
         players: [],
         currentQuestionIndex: 0,
-        questions,
+        questions: [],
         createdAt: new Date()
       };
 
@@ -134,7 +131,7 @@ class GameManager {
     return code;
   }
 
-  private async generateQuestions(topics: string[]): Promise<Question[]> {
+  async generateQuestions(topics: string[]): Promise<Question[]> {
     if (this.debugMode) {
       Logger.info('Debug mode: Using mock questions');
       return mockQuestions;
@@ -143,17 +140,36 @@ class GameManager {
     Logger.info('Generating questions for topics', { topics });
 
     try {
-      const prompt = `Create 10 multiple choice trivia questions about: ${topics.join(', ')}. 
-                     Format each question with 4 options and indicate the correct answer index (0-3).`;
+      if (!this.anthropic) throw new Error('Anthropic client is not initialized.');
 
-      const response = await this.openai!.chat.completions.create({
-        model: "gpt-4",
+      const prompt = `Generate 3 multiple-choice trivia questions on the following topics: ${topics.join(', ')}.
+      Each question should have 4 answer choices, and the correct answer should be marked with its index (0-3).
+      Format the response as a JSON array of objects with "text", "options", "correctAnswer", and "timeLimit".
+      The response should just be the raw JSON, do not write it in a code block.`;
+
+      const response = await this.anthropic.messages.create({
+        model: "claude-3-7-sonnet-latest",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
+        max_tokens: 1024,
       });
 
+      const responseContent = response.content[0];
+      if (!responseContent) throw new Error('Invalid response from Claude');
+
+      let content = "";
+      switch (responseContent.type) {
+        case "text":
+          content = responseContent.text;
+          Logger.info("Response from Claude:", content);
+          break;
+        default:
+          throw new Error('Invalid response type from Claude');
+      }
+      const parsedQuestions: Question[] = JSON.parse(content);
+
       Logger.success('Questions generated successfully');
-      return []; // TODO: Parse AI response
+      return parsedQuestions;
     } catch (error) {
       Logger.error('Failed to generate questions', error);
       throw error;
@@ -209,7 +225,6 @@ class GameManager {
     return true;
   }
 
-
   startTrivia(gameId: string, hostId: string): boolean {
     Logger.info('Attempting to start trivia', { gameId, hostId });
 
@@ -233,7 +248,6 @@ class GameManager {
 
     return true;
   }
-
 
   submitAnswer(gameId: string, playerId: string, answer: string): boolean {
     Logger.info('Processing answer submission', { gameId, playerId });
@@ -310,7 +324,6 @@ class GameManager {
       }
 
       game.status = 'in-progress';
-
       Logger.success('Advanced to next question', {
         gameId,
         questionIndex: game.currentQuestionIndex,
@@ -320,11 +333,6 @@ class GameManager {
 
     return null;
   }
-
-
-
-
-
 
   getLeaderboard(gameId: string): Player[] {
     Logger.info('Fetching leaderboard', { gameId });
@@ -439,27 +447,35 @@ router.get('/games/:id/players', (req, res) => {
   res.json(game.players);
 });
 
-router.post('/games/:id/lobby', (req, res) => {
+router.post('/games/:id/lobby', async (req, res) => {
   Logger.info('POST /games/:id/lobby request received', {
     gameId: req.params.id,
     body: req.body
   });
 
-  const { hostId } = req.body;
-  const success = gameManager.createLobby(req.params.id, hostId);
+  const { hostId, topics } = req.body;
+  const game = gameManager.getGame(req.params.id);
 
-  if (!success) {
+  if (!game || game.hostId !== hostId || game.status !== "waiting") {
     Logger.warn('Create lobby request failed');
     res.status(400).json({ error: 'Unable to create lobby' });
     return;
   }
 
-  Logger.success('Lobby created successfully');
-  res.json({ status: "lobby" });
+  try {
+    const questions = await gameManager.generateQuestions(topics);
+    game.questions = questions;
+    game.status = "lobby";
+    Logger.success("Lobby created with generated questions", { gameId: game.id });
+    res.json({ status: "lobby", questions });
+  } catch (error) {
+    Logger.error("Failed to generate questions", error);
+    res.status(500).json({ error: "Failed to generate questions" });
+  }
 });
 
 router.post('/games/:id/start-trivia', (req, res) => {
-  Logger.info('POST /games/:id/star-triviat request received', {
+  Logger.info('POST /games/:id/start-trivia request received', {
     gameId: req.params.id,
     body: req.body
   });

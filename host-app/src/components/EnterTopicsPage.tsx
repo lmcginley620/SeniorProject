@@ -22,7 +22,7 @@ const EnterTopicsPage: React.FC = () => {
   const createLobby = async () => {
     try {
       console.log("Creating lobby...");
-      await gameService.createLobby(roomCode);
+      await gameService.createLobby(roomCode, topics);
       navigate('/lobby', { state: { roomCode, topics } });
     } catch (err) {
       setError('Failed to create lobby. Please try again.');

@@ -53,24 +53,29 @@ class GameService {
     }
   }
 
-  async createLobby(gameId: string): Promise<any> {
+  // ✅ Step 2: Move the game to "lobby" so players can join
+  async createLobby(gameId: string, topics: string[]): Promise<any> {
     try {
-      console.log(`Creating lobby for game ID: ${gameId}`);
+      console.log(`Creating lobby for game ID: ${gameId} with topics:`, topics);
 
       const hostId = localStorage.getItem("hostId");
       if (!hostId) {
         throw new Error("Host ID not found in localStorage.");
       }
 
-      const response = await axios.post(`${API_BASE_URL}/games/${gameId}/lobby`, { hostId });
-      console.log("Lobby created successfully:", response.data);
+      const response = await axios.post(`${API_BASE_URL}/games/${gameId}/lobby`, {
+        hostId,
+        topics
+      });
 
+      console.log("Lobby created successfully with questions:", response.data.questions);
       return response.data;
     } catch (error: any) {
       console.error("Failed to create lobby:", error.response?.data || error.message);
       throw error;
     }
   }
+
 
   async startTrivia(gameId: string): Promise<any> {
     try {
@@ -214,7 +219,7 @@ class GameService {
       return response.data;
     } catch (error: any) {
       console.error("Failed to fetch game results:", error.response?.data || error.message);
-      return null;
+      return null;  // Prevents breaking the UI if results fail
     }
   }
 
@@ -245,6 +250,7 @@ class GameService {
           return;
         }
 
+        // ✅ Keep polling until the new question actually changes
         if (waitingForResults && status === "in-progress") {
           console.log("Game moved from results to in-progress, checking for new question...");
 
