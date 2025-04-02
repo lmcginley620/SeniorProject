@@ -92,7 +92,7 @@ class GameManager {
   private anthropic: Anthropic | null;
   private debugMode: boolean;
 
-  constructor(apiKey: string, debug: boolean = false) {
+  constructor(debug: boolean = false) {
     this.games = new Map();
     this.debugMode = debug;
     this.anthropic = debug ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
@@ -392,7 +392,7 @@ class GameManager {
 // router setup
 const router = Router();
 const isDebugMode = process.env.DEBUG_MODE === 'true';
-const gameManager = new GameManager(process.env.OPENAI_API_KEY || '', isDebugMode);
+const gameManager = new GameManager(isDebugMode);
 
 // api endpoints
 router.get('/', (req, res) => {

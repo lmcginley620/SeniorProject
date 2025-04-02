@@ -53,7 +53,6 @@ class GameService {
     }
   }
 
-  // ✅ Step 2: Move the game to "lobby" so players can join
   async createLobby(gameId: string, topics: string[]): Promise<any> {
     try {
       console.log(`Creating lobby for game ID: ${gameId} with topics:`, topics);
@@ -76,7 +75,6 @@ class GameService {
     }
   }
 
-
   async startTrivia(gameId: string): Promise<any> {
     try {
       console.log(`Starting trivia for game ID: ${gameId}`);
@@ -95,7 +93,6 @@ class GameService {
       throw error;
     }
   }
-
 
   async joinGame(gameId: string, playerName: string): Promise<Player | null> {
     try {
@@ -140,7 +137,6 @@ class GameService {
       return null;
     }
   }
-
 
   async getGameStatus(gameId: string): Promise<'waiting' | 'lobby' | 'in-progress' | 'results' | 'ended' | null> {
     try {
@@ -250,7 +246,7 @@ class GameService {
           return;
         }
 
-        // ✅ Keep polling until the new question actually changes
+        // Keep polling until the new question actually changes
         if (waitingForResults && status === "in-progress") {
           console.log("Game moved from results to in-progress, checking for new question...");
 
@@ -278,10 +274,6 @@ class GameService {
       clearInterval(interval);
     };
   }
-
-
-
-
 }
 
 export const gameService = new GameService();
