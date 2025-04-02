@@ -130,7 +130,7 @@ export function QuestionResults() {
       <div className="w-full max-w-[1400px] mx-auto pt-12 px-4">
         {/* Progress bar on top */}
         <div className="mb-6">
-          <Progress value={progress} className="h-3 rounded-full bg-gray-200 transition-all duration-700"></Progress>
+          <Progress value={progress} className="h-3 rounded-full bg-gray-200 transition-all duration-5000"></Progress>
 
         </div>
 
