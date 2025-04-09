@@ -30,9 +30,7 @@ const QuestionAnswerPage: React.FC = () => {
       }
     };
 
-    // Set up our own polling rather than using the service's polling function
     const startPolling = () => {
-      // Clear any existing interval first
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
       }
@@ -105,7 +103,6 @@ const QuestionAnswerPage: React.FC = () => {
 
   return (
     <div className="question-page">
-      <h2 className="question-text">{question.text}</h2>
       {answerSubmitted ? (
         <div className="waiting-container">
           <h1 className="answer-submitted-text">Answer Submitted</h1>

@@ -80,7 +80,6 @@ export const gameService = {
 
   async pollForNextQuestion(
     gameId: string,
-    currentIndex: number,
     callback: (question: any, gameStatus: string) => void
   ): Promise<() => void> {
     console.log(`Starting polling for next question in game ${gameId}`);
