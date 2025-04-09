@@ -65,8 +65,6 @@ const EnterTopicsPage: React.FC = () => {
       <button className="start-trivia-button" onClick={createLobby} disabled={topics.length === 0}>
         Create Lobby
       </button>
-
-      {/* ✅ Loading message and dots */}
       {loading && (
         <div className="loading-section">
           <p className="loading-message">Generating Quiz</p>

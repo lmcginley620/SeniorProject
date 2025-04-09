@@ -13,6 +13,8 @@ const QuestionPage: React.FC = () => {
 
   const [question, setQuestion] = useState(initialQuestion);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
+  const [totalQuestions, setTotalQuestions] = useState<number | null>(null);
+
 
   useEffect(() => {
     document.body.classList.add("question-page-body");
@@ -26,7 +28,17 @@ const QuestionPage: React.FC = () => {
       if (!question) {
         try {
           const newQuestion = await gameService.getQuestion(roomCode);
-          setQuestion(newQuestion);
+
+          if (newQuestion) {
+            setQuestion(newQuestion);
+            setCurrentQuestionIndex(newQuestion.questionIndex ?? 0);
+
+            const game = await gameService.getGame(roomCode);
+            setTotalQuestions(game.questions.length);
+          } else {
+            console.warn("No question received from server.");
+          }
+
         } catch (error) {
           console.error("Failed to fetch question:", error);
         }
@@ -35,6 +47,8 @@ const QuestionPage: React.FC = () => {
 
     fetchQuestion();
   }, [question, roomCode]);
+
+
 
   useEffect(() => {
     const interval = setInterval(async () => {

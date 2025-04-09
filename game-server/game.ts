@@ -316,24 +316,23 @@ class GameManager {
       return null;
     }
 
-    setTimeout(() => {
-      game.currentQuestionIndex++;
+    game.currentQuestionIndex++;
 
-      if (game.currentQuestionIndex >= game.questions.length) {
-        game.status = 'ended';
-        Logger.info('Game ended - all questions completed', { gameId });
-        return;
-      }
+    if (game.currentQuestionIndex >= game.questions.length) {
+      game.status = 'ended';
+      Logger.info('Game ended - all questions completed', { gameId });
+      return null;
+    }
 
-      game.status = 'in-progress';
-      Logger.success('Advanced to next question', {
-        gameId,
-        questionIndex: game.currentQuestionIndex,
-        questionsRemaining: game.questions.length - game.currentQuestionIndex
-      });
-    }, 3000);
+    game.status = 'in-progress';
+    Logger.success('Advanced to next question', {
+      gameId,
+      questionIndex: game.currentQuestionIndex,
+      questionsRemaining: game.questions.length - game.currentQuestionIndex
+    });
 
-    return null;
+    return game.questions[game.currentQuestionIndex];
+
   }
 
   getLeaderboard(gameId: string): Player[] {
@@ -414,6 +413,22 @@ router.post('/games', async (req, res) => {
     res.status(500).json({ error: 'Failed to create game' });
   }
 });
+
+router.get('/games/:id', (req, res) => {
+  const gameId = req.params.id;
+  Logger.info("GET /games/:id request received", { gameId });
+
+  const game = gameManager.getGame(gameId);
+  if (!game) {
+    Logger.warn("Game not found", { gameId });
+    res.status(404).json({ error: "Game not found" });
+    return;
+  }
+
+  Logger.success("Full game object returned", { gameId });
+  res.json(game);
+});
+
 
 router.post('/games/:id/join', (req, res) => {
   Logger.info('POST /games/:id/join request received', {
@@ -498,9 +513,17 @@ router.post('/games/:id/start-trivia', (req, res) => {
 });
 
 router.get('/games/:id/questions', (req, res) => {
-  Logger.info('GET /games/:id/questions request received', { gameId: req.params.id });
+  const gameId = req.params.id;
+  Logger.info('GET /games/:id/questions request received', { gameId });
 
-  const question = gameManager.getCurrentQuestion(req.params.id);
+  const game = gameManager.getGame(gameId);
+  if (!game) {
+    Logger.warn('Game not found', { gameId });
+    res.status(404).json({ error: 'Game not found' });
+    return;
+  }
+
+  const question = gameManager.getCurrentQuestion(gameId);
   if (!question) {
     Logger.warn('Get question request failed');
     res.status(400).json({ error: 'No current question' });
@@ -508,8 +531,12 @@ router.get('/games/:id/questions', (req, res) => {
   }
 
   Logger.success('Get question request completed');
-  res.json(question);
+  res.json({
+    ...question,
+    questionIndex: game.currentQuestionIndex  // ✅ Add the index manually here
+  });
 });
+
 
 router.get('/games/:id/results', (req, res) => {
   const gameId = req.params.id;
@@ -524,6 +551,20 @@ router.get('/games/:id/results', (req, res) => {
   }
 
   const currentQuestion = game.questions[game.currentQuestionIndex];
+  const playerScores = game.players.map((player) => {
+    const lastAnswer = player.answers.find(
+      (a) => a.questionIndex === game.currentQuestionIndex
+    );
+
+    const isCorrect = lastAnswer?.answer === currentQuestion.options[currentQuestion.correctAnswer];
+    return {
+      id: player.id,
+      name: player.name,
+      score: player.score,
+      pointsGained: isCorrect ? 100 : 0
+    };
+  });
+
 
   const answerCounts: Record<string, number> = {};
   currentQuestion.options.forEach((option) => {
@@ -540,7 +581,7 @@ router.get('/games/:id/results', (req, res) => {
   });
 
   Logger.success('Results retrieved successfully', { gameId, results: answerCounts });
-  res.json({ question: currentQuestion.text, results: answerCounts });
+  res.json({ question: currentQuestion.text, results: answerCounts, playerScores });
 });
 
 

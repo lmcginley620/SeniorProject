@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { gameService } from "../services/gameService";
-import { Pie, PieChart, Cell, ResponsiveContainer } from "recharts";
+import { Pie, PieChart, Cell } from "recharts";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -18,10 +17,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { TrendingUp } from "lucide-react";
-
 import { Progress } from "@/components/ui/progress";
-
 
 import "../styles/questionresults.css";
 
@@ -35,25 +31,21 @@ export function QuestionResults() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [questionText, setQuestionText] = useState<string>("Loading...");
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [gameStatus, setGameStatus] = useState<string>("results");
-
   const [progress, setProgress] = useState(100);
 
   useEffect(() => {
-    const totalTime = 10; // seconds
-    const tick = 1000; // ms
+    const totalTime = 10;
+    const tick = 1000;
     let elapsed = 0;
 
     const interval = setInterval(() => {
       elapsed += 1;
       setProgress(100 - (elapsed / totalTime) * 100);
-
       if (elapsed >= totalTime) clearInterval(interval);
     }, tick);
 
     return () => clearInterval(interval);
   }, []);
-
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -73,6 +65,7 @@ export function QuestionResults() {
           const leaderboardData = await gameService.getPlayers(roomCode);
           leaderboardData.sort((a: any, b: any) => b.score - a.score);
           setLeaderboard(leaderboardData);
+
         } else {
           console.warn("No results received.");
         }
@@ -83,6 +76,21 @@ export function QuestionResults() {
 
     fetchResults();
   }, [roomCode]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      gameService.nextQuestion(roomCode)
+        .then(() => {
+          console.log("Host advanced to next question.");
+        })
+        .catch((err) => {
+          console.error("Failed to advance question:", err);
+        });
+    }, 10000); // matches the progress bar duration
+
+    return () => clearTimeout(timeout);
+  }, [roomCode]);
+
 
   useEffect(() => {
     const intervalRef = { current: 0 };
@@ -107,17 +115,11 @@ export function QuestionResults() {
     };
 
     startPolling();
-
-    return () => {
-      clearInterval(intervalRef.current);
-    };
+    return () => clearInterval(intervalRef.current);
   }, [roomCode, navigate]);
 
-
   const chartConfig = {
-    votes: {
-      label: "Votes",
-    },
+    votes: { label: "Votes" },
     ...chartData.reduce((acc, data, index) => {
       acc[data.name] = { label: data.name, color: COLORS[index] };
       return acc;
@@ -126,12 +128,9 @@ export function QuestionResults() {
 
   return (
     <div className="results-page-bg">
-
       <div className="w-full max-w-[1400px] mx-auto pt-12 px-4">
-        {/* Progress bar on top */}
         <div className="mb-6">
-          <Progress value={progress} className="h-3 rounded-full bg-gray-200 transition-all duration-5000"></Progress>
-
+          <Progress value={progress} className="h-3 rounded-full bg-gray-200 transition-all duration-5000" />
         </div>
 
         <div className="flex justify-center items-center min-h-screen">
@@ -154,13 +153,12 @@ export function QuestionResults() {
                       cy="55%"
                       outerRadius={150}
                       labelLine={false}
-                      label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
+                      label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
                         if (percent === 0) return null;
                         const RADIAN = Math.PI / 180;
                         const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                         const x = cx + radius * Math.cos(-midAngle * RADIAN);
                         const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
                         return (
                           <text
                             x={x}
@@ -180,7 +178,6 @@ export function QuestionResults() {
                         <Cell key={`cell-${index}`} fill={COLORS[index]} />
                       ))}
                     </Pie>
-
                     <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                     <ChartLegend
                       verticalAlign="bottom"
@@ -191,7 +188,6 @@ export function QuestionResults() {
                   </PieChart>
                 </ChartContainer>
               </CardContent>
-
             </div>
 
             <div className="flex flex-col w-1/3 items-center border-l border-gray-300 pl-12">
@@ -208,11 +204,11 @@ export function QuestionResults() {
                   <tbody>
                     {leaderboard.map((player, index) => (
                       <tr key={player.id} className="border-b border-gray-200">
-                        <td className="px-4 py-2 text-lg text-gray-900 dark:text-white font-semibold">
-                          {index + 1}
-                        </td>
+                        <td className="px-4 py-2 text-lg text-gray-900 dark:text-white font-semibold">{index + 1}</td>
                         <td className="px-4 py-2 text-lg text-gray-900 dark:text-white">{player.name}</td>
-                        <td className="px-4 py-2 text-lg text-gray-900 dark:text-white">{player.score}</td>
+                        <td className="px-4 py-2 text-lg text-gray-900 dark:text-white font-semibold">
+                          {player.score}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -226,5 +222,3 @@ export function QuestionResults() {
     </div>
   );
 }
-
-

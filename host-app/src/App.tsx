@@ -9,7 +9,8 @@ import EnterTopicsPage from './components/EnterTopicsPage';
 import QuestionPage from './components/QuestionPage';
 import EndGamePage from './components/EndGamePage';
 import { QuestionResults } from "./components/QuestionResults";
-import Leaderboard from "./components/leaderboard/Leaderboard";
+import LeaderboardPage from "./components/LeaderboardPage";
+// import Leaderboard from "./components/leaderboard/Leaderboard";
 import PageWrapper from './components/PageWrapper';
 
 const AnimatedRoutes: React.FC = () => {
@@ -24,7 +25,8 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/question" element={<PageWrapper><QuestionPage /></PageWrapper>} />
         <Route path="/question-result" element={<PageWrapper><QuestionResults /></PageWrapper>} />
         <Route path="/end" element={<PageWrapper><EndGamePage /></PageWrapper>} />
-        <Route path="/leaderboard" element={<PageWrapper><Leaderboard /></PageWrapper>} />
+        <Route path="/leaderboard" element={<PageWrapper><LeaderboardPage /></PageWrapper>} />
+        {/* <Route path="/leaderboard" element={<PageWrapper><Leaderboard /></PageWrapper>} /> */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
