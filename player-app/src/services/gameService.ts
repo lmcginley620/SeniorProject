@@ -81,12 +81,13 @@ export const gameService = {
 
   async pollForNextQuestion(
     gameId: string,
+    currentIndex: number,
     callback: (question: any, gameStatus: string) => void
   ): Promise<() => void> {
     console.log(`Starting polling for next question in game ${gameId}`);
 
-    let lastQuestionIndex = -1;
-    let waitingForResults = true;
+    let lastQuestionIndex = currentIndex;
+    let waitingForResults = false;
 
     const checkForNextQuestion = async () => {
       try {
@@ -106,11 +107,15 @@ export const gameService = {
         }
 
         if (waitingForResults && status.status === "in-progress") {
+          console.log("Game moved from results to in-progress, checking for new question...");
+
           const nextQuestion = await this.getCurrentQuestion(gameId);
           if (nextQuestion && nextQuestion.questionIndex > lastQuestionIndex) {
             lastQuestionIndex = nextQuestion.questionIndex;
             callback(nextQuestion, "in-progress");
             clearInterval(interval);
+          } else {
+            console.log("New question not detected yet, continuing to poll...");
           }
         }
       } catch (error) {
@@ -125,6 +130,7 @@ export const gameService = {
       clearInterval(interval);
     };
   }
+
 
 
 

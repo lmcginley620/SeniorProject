@@ -201,7 +201,12 @@ class GameService {
     }
   }
 
-  async getGameResults(gameId: string): Promise<{ question: string; results: Record<string, number> } | null> {
+  async getGameResults(gameId: string): Promise<{
+    question: string;
+    results: Record<string, number>;
+    playerScores?: { id: string; name: string; score: number; }[];
+  } | null> {
+
     try {
       console.log(`Fetching results for game ${gameId}`);
       const response = await axios.get(`${API_BASE_URL}/games/${gameId}/results`);
@@ -218,6 +223,18 @@ class GameService {
       return null;  // Prevents breaking the UI if results fail
     }
   }
+
+  async getGame(gameId: string): Promise<Game> {
+    try {
+      console.log(`Fetching full game data for game ID: ${gameId}`);
+      const response = await axios.get(`${API_BASE_URL}/games/${gameId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error("Failed to fetch game data:", error.response?.data || error.message);
+      throw error;
+    }
+  }
+
 
 
   async pollForNextQuestion(

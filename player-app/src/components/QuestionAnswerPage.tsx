@@ -13,7 +13,7 @@ const QuestionAnswerPage: React.FC = () => {
   const [answerSubmitted, setAnswerSubmitted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(-1);
   const [isPolling, setIsPolling] = useState(false);
-  const stopPollingRef = useRef<() => void | null>(null);
+  const stopPollingRef = useRef<(() => void) | null>(null) as React.MutableRefObject<() => void | null>;
 
 
   useEffect(() => {
@@ -57,30 +57,34 @@ const QuestionAnswerPage: React.FC = () => {
       if (answerSubmitted && !isPolling) {
         setIsPolling(true);
 
-        stopPolling = await gameService.pollForNextQuestion(roomCode, (nextQuestion, gameStatus) => {
-          if (gameStatus === "ended") {
-            stopPollingRef.current?.();
-            navigate("/game-over");
-            return;
-          }
+        stopPolling = await gameService.pollForNextQuestion(
+          roomCode,
+          currentQuestionIndex,
+          (nextQuestion, gameStatus) => {
+            if (gameStatus === "ended") {
+              stopPollingRef.current?.(); // Stop polling if needed
+              navigate("/game-over");
+              return;
+            }
 
-          console.log("Game has ended, navigating to leaderboard.");
+            if (gameStatus === "results") {
+              console.log("Game in results phase, waiting for host to move forward.");
+              return;
+            }
 
-          if (gameStatus === "results") {
-            console.log("Game in results phase, waiting for host to move forward.");
-            return;
+            if (nextQuestion && nextQuestion.questionIndex > currentQuestionIndex) {
+              console.log("New question detected, updating UI.");
+              setQuestion({ ...nextQuestion });
+              setCurrentQuestionIndex(nextQuestion.questionIndex);
+              setAnswerSubmitted(false);
+              setSelectedAnswer(null);
+              setIsPolling(false);
+              stopPollingRef.current?.(); // Stop current polling cycle
+            }
           }
+        );
 
-          if (nextQuestion && nextQuestion.questionIndex > currentQuestionIndex) {
-            console.log("New question detected, updating UI.");
-            setQuestion({ ...nextQuestion });
-            setCurrentQuestionIndex(nextQuestion.questionIndex);
-            setAnswerSubmitted(false);
-            setSelectedAnswer(null);
-            setIsPolling(false);
-            if (stopPolling) stopPolling();
-          }
-        });
+        stopPollingRef.current = stopPolling; // Store stop function in ref
       }
     };
 

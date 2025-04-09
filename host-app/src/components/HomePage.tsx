@@ -10,7 +10,7 @@ const HomePage: React.FC = () => {
   const roomCode = location.state?.roomCode || "NO CODE";
 
   const [players, setPlayers] = useState<string[]>([]);
-  const [gameStatus, setGameStatus] = useState<string>("waiting"); 
+  const [gameStatus, setGameStatus] = useState<string>("waiting");
 
   useEffect(() => {
     document.body.classList.add("homepage-body");
@@ -19,7 +19,7 @@ const HomePage: React.FC = () => {
     };
   }, []);
 
- 
+
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
@@ -30,8 +30,8 @@ const HomePage: React.FC = () => {
       }
     };
 
-    fetchPlayers(); 
-    const interval = setInterval(fetchPlayers, 3000); 
+    fetchPlayers();
+    const interval = setInterval(fetchPlayers, 3000);
 
     return () => clearInterval(interval);
   }, [roomCode]);
@@ -39,8 +39,8 @@ const HomePage: React.FC = () => {
   const handleStartTrivia = async () => {
     try {
       const data = await gameService.startTrivia(roomCode);
-      setGameStatus("in-progress"); 
-      navigate("/question", { state: { roomCode, question: data.question } }); 
+      setGameStatus("in-progress");
+      navigate("/question", { state: { roomCode, question: data.question } });
     } catch (error) {
       console.error("Failed to start trivia:", error);
     }
@@ -80,9 +80,9 @@ const HomePage: React.FC = () => {
       </footer>
 
       <div className="start-button-container">
-          <button className="start-game-button" onClick={handleStartTrivia}>
-            Start Trivia
-          </button>
+        <button className="start-game-button" onClick={handleStartTrivia}>
+          Start Trivia
+        </button>
       </div>
     </div>
   );
