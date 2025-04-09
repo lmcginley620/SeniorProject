@@ -78,7 +78,6 @@ export const gameService = {
     }
   },
 
-
   async pollForNextQuestion(
     gameId: string,
     callback: (question: any, gameStatus: string) => void
@@ -86,11 +85,22 @@ export const gameService = {
     console.log(`Starting polling for next question in game ${gameId}`);
 
     let lastQuestionIndex = -1;
-    let waitingForResults = true;
+    
+    // Get the current question to set the initial lastQuestionIndex
+    try {
+      const currentQuestion = await this.getCurrentQuestion(gameId);
+      if (currentQuestion) {
+        lastQuestionIndex = currentQuestion.questionIndex;
+        console.log(`Initial question index: ${lastQuestionIndex}`);
+      }
+    } catch (error) {
+      console.error("Error getting initial question index:", error);
+    }
 
     const checkForNextQuestion = async () => {
       try {
         const status = await this.getGameStatus(gameId);
+        console.log(`Game status: ${status.status}`);
 
         if (status.status === "ended") {
           console.log("Game has ended, stopping polling.");
@@ -99,35 +109,32 @@ export const gameService = {
           return;
         }
 
-        if (status.status === "results") {
-          console.log("Game is in results phase, waiting...");
-          waitingForResults = true;
-          return;
-        }
-
-        if (waitingForResults && status.status === "in-progress") {
-          const nextQuestion = await this.getCurrentQuestion(gameId);
-          if (nextQuestion && nextQuestion.questionIndex > lastQuestionIndex) {
+        // Always check for a new question regardless of game status
+        const nextQuestion = await this.getCurrentQuestion(gameId);
+        
+        if (nextQuestion) {
+          console.log(`Polled question index: ${nextQuestion.questionIndex}, last question index: ${lastQuestionIndex}`);
+          
+          // If we have a new question with a higher index, update and notify
+          if (nextQuestion.questionIndex > lastQuestionIndex) {
+            console.log(`New question detected: ${nextQuestion.questionIndex}`);
             lastQuestionIndex = nextQuestion.questionIndex;
-            callback(nextQuestion, "in-progress");
-            clearInterval(interval);
+            callback(nextQuestion, status.status);
           }
         }
+        
       } catch (error) {
         console.error("Error polling for next question:", error);
       }
     };
 
+    // Check more frequently (every 1 second)
     const interval = setInterval(checkForNextQuestion, 1000);
 
+    // Return function to stop polling
     return () => {
       console.log("Stopping polling for next question.");
       clearInterval(interval);
     };
   }
-
-
-
-
-
 };

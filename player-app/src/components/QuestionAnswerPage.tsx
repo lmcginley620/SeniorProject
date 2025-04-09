@@ -12,27 +12,76 @@ const QuestionAnswerPage: React.FC = () => {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answerSubmitted, setAnswerSubmitted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(-1);
-  const [isPolling, setIsPolling] = useState(false);
-  const stopPollingRef = useRef<() => void | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-
+  // Initialize and set up polling
   useEffect(() => {
-    const fetchQuestion = async () => {
+    const fetchCurrentQuestion = async () => {
       try {
-        console.log(`Fetching question for game: ${roomCode}`);
+        console.log(`Fetching initial question for game: ${roomCode}`);
         const response = await gameService.getCurrentQuestion(roomCode);
 
         if (response) {
           setQuestion({ ...response });
-          setCurrentQuestionIndex(response.questionIndex ?? 0);
+          setCurrentQuestionIndex(response.questionIndex);
         }
       } catch (error) {
-        console.error("Failed to fetch question:", error);
+        console.error("Failed to fetch initial question:", error);
       }
     };
 
-    fetchQuestion();
-  }, [roomCode]);
+    // Set up our own polling rather than using the service's polling function
+    const startPolling = () => {
+      // Clear any existing interval first
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+
+      // Check for game status and new questions every second
+      pollingIntervalRef.current = setInterval(async () => {
+        try {
+          // First check game status
+          const status = await gameService.getGameStatus(roomCode);
+          
+          if (status.status === "ended") {
+            console.log("Game has ended, navigating to game-over");
+            clearInterval(pollingIntervalRef.current!);
+            navigate("/game-over");
+            return;
+          }
+          
+          // Then check for new questions
+          const latestQuestion = await gameService.getCurrentQuestion(roomCode);
+          
+          if (latestQuestion && latestQuestion.questionIndex > currentQuestionIndex) {
+            console.log(`New question detected: ${latestQuestion.questionIndex} (current: ${currentQuestionIndex})`);
+            setQuestion(latestQuestion);
+            setCurrentQuestionIndex(latestQuestion.questionIndex);
+            setAnswerSubmitted(false);
+            setSelectedAnswer(null);
+          }
+          
+        } catch (error) {
+          console.error("Error in polling:", error);
+        }
+      }, 1000);
+    };
+
+    fetchCurrentQuestion();
+    startPolling();
+
+    // Cleanup on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [roomCode, navigate]);
+
+  // Separate useEffect to watch currentQuestionIndex for debugging
+  useEffect(() => {
+    console.log(`Current question index updated to: ${currentQuestionIndex}`);
+  }, [currentQuestionIndex]);
 
   const handleSubmitAnswer = async (answer: string) => {
     if (answerSubmitted) return;
@@ -50,55 +99,18 @@ const QuestionAnswerPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    let stopPolling: (() => void) | null = null;
-
-    const startPolling = async () => {
-      if (answerSubmitted && !isPolling) {
-        setIsPolling(true);
-
-        stopPolling = await gameService.pollForNextQuestion(roomCode, (nextQuestion, gameStatus) => {
-          if (gameStatus === "ended") {
-            stopPollingRef.current?.();
-            navigate("/game-over");
-            return;
-          }
-
-          console.log("Game has ended, navigating to leaderboard.");
-
-          if (gameStatus === "results") {
-            console.log("Game in results phase, waiting for host to move forward.");
-            return;
-          }
-
-          if (nextQuestion && nextQuestion.questionIndex > currentQuestionIndex) {
-            console.log("New question detected, updating UI.");
-            setQuestion({ ...nextQuestion });
-            setCurrentQuestionIndex(nextQuestion.questionIndex);
-            setAnswerSubmitted(false);
-            setSelectedAnswer(null);
-            setIsPolling(false);
-            if (stopPolling) stopPolling();
-          }
-        });
-      }
-    };
-
-    startPolling();
-
-    return () => {
-      if (stopPolling) stopPolling();
-    };
-  }, [answerSubmitted, currentQuestionIndex, roomCode, navigate]);
-
   if (!question) {
     return <p className="loading-text">Loading question...</p>;
   }
 
   return (
     <div className="question-page">
+      <h2 className="question-text">{question.text}</h2>
       {answerSubmitted ? (
-        <h1 className="answer-submitted-text">Answer Submitted</h1>
+        <div className="waiting-container">
+          <h1 className="answer-submitted-text">Answer Submitted</h1>
+          <p className="waiting-text">Waiting for next question...</p>
+        </div>
       ) : (
         <div className="answers">
           {question.options.map((option: string, index: number) => (
