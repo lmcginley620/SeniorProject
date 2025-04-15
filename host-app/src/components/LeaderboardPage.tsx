@@ -33,6 +33,8 @@ const LeaderboardPage: React.FC = () => {
     return (
         <div className="leaderboard-container">
             <div className="flex justify-center items-center min-h-screen flex-col">
+                <h1 className="cursor game-over-title">Game Over!</h1>
+
                 <Card className="w-[700px] p-8 shadow-xl rounded-lg bg-white dark:bg-gray-800">
                     <h2 className="text-4xl font-bold text-center text-gray-900 dark:text-white mb-8">Final Leaderboard</h2>
 

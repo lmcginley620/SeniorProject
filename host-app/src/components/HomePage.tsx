@@ -4,6 +4,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import "../styles/homepage.css";
 import { gameService } from "../services/gameService";
 
+
 const HomePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
