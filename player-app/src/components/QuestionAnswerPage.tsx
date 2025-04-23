@@ -6,10 +6,9 @@ import "../styles/questionpage.css";
 const QuestionAnswerPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { roomCode, playerName } = location.state || {};
+  const { roomCode } = location.state || {}; // Removed unused playerName
 
   const [question, setQuestion] = useState<{ text: string; options: string[]; questionIndex: number } | null>(null);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answerSubmitted, setAnswerSubmitted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(-1);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,7 +55,6 @@ const QuestionAnswerPage: React.FC = () => {
             setQuestion(latestQuestion);
             setCurrentQuestionIndex(latestQuestion.questionIndex);
             setAnswerSubmitted(false);
-            setSelectedAnswer(null);
           }
           
         } catch (error) {
@@ -90,8 +88,8 @@ const QuestionAnswerPage: React.FC = () => {
     try {
       console.log(`Submitting answer: ${answer} for player: ${playerId}`);
       await gameService.submitAnswer(roomCode, playerId, answer);
-      setSelectedAnswer(answer);
       setAnswerSubmitted(true);
+      // Removed setSelectedAnswer since the state isn't being used
     } catch (error) {
       console.error("Error submitting answer:", error);
     }
