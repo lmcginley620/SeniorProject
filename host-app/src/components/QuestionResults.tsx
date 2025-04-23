@@ -34,7 +34,7 @@ export function QuestionResults() {
   const [progress, setProgress] = useState(100);
 
   useEffect(() => {
-    const totalTime = 10000; // 10 seconds
+    const totalTime = 15000; // 15 seconds
     const intervalTime = 50; // Update every 50ms
     let start = Date.now();
 
@@ -92,7 +92,7 @@ export function QuestionResults() {
         .catch((err) => {
           console.error("Failed to advance question:", err);
         });
-    }, 10000); // matches the progress bar duration
+    }, 1000); // matches the progress bar duration
 
     return () => clearTimeout(timeout);
   }, [roomCode]);
@@ -143,8 +143,8 @@ export function QuestionResults() {
 
         </div>
 
-        <div className="flex justify-center items-center min-h-screen px-4">
-          <Card className="flex flex-row w-[95vw] h-[90vh] p-12 shadow-2xl rounded-2xl bg-white dark:bg-gray-800">
+        <div className="flex justify-center mt-12 px-4">
+          <Card className="flex flex-row w-[95vw] max-h-[100vh] p-12 shadow-2xl rounded-2xl bg-white dark:bg-gray-800">
 
             <div className="flex flex-col w-2/3 items-center pr-12">
               <CardHeader className="flex justify-center items-center pb-4 text-center w-full">

@@ -50,6 +50,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="host-screen">
       <header className="game-title">
+        <p className="p-link">Join using this link! https://trivia-fusion.web.app</p>
         <h1>TRIVIA FUSION</h1>
         <h2 className="sub-title">A Game by Luke McGinley & Owen Mitchell</h2>
       </header>
@@ -61,7 +62,8 @@ const HomePage: React.FC = () => {
         </div>
         <div className="qr-code-section">
           <p>Scan the QR Code to Join:</p>
-          <QRCodeCanvas value={`http://localhost:5175/?room=${roomCode}`} size={180} />
+          <QRCodeCanvas value={`https://trivia-fusion.web.app/?room=${roomCode}`
+          } size={180} />
         </div>
       </main>
 
