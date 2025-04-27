@@ -33,6 +33,7 @@ interface Question {
   options: string[];
   correctAnswer: number;
   timeLimit: number;
+  startedAt?: Date; // When the question was presented to players
 }
 
 interface Game {
@@ -43,6 +44,7 @@ interface Game {
   currentQuestionIndex: number;
   questions: Question[];
   createdAt: Date;
+  statusChangedAt?: Date; // Track when game status changes for time-based calculations
 }
 
 // Mock questions for debug mode
@@ -102,7 +104,7 @@ class GameManager {
 
   constructor(apiKey: string, debug: boolean = false) {
     this.debugMode = debug;
-    
+
     // Initialize Anthropic client for production mode
     if (!debug) {
       const actualApiKey = apiKey || functions.config().anthropic?.api_key;
@@ -113,7 +115,7 @@ class GameManager {
     } else {
       this.anthropic = null;
     }
-    
+
     Logger.info(`Game Manager initialized in ${debug ? 'debug' : 'production'} mode`);
   }
 
@@ -130,13 +132,15 @@ class GameManager {
         players: [],
         currentQuestionIndex: 0,
         questions: [],
-        createdAt: new Date()
+        createdAt: new Date(),
+        statusChangedAt: new Date()
       };
 
       // Store the game in Firestore
       await gamesCollection.doc(gameId).set({
         ...game,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        statusChangedAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
       Logger.success('Game created successfully', { gameId, debugMode: this.debugMode });
@@ -276,8 +280,11 @@ class GameManager {
         return false;
       }
 
+      const now = new Date();
+
       await gamesCollection.doc(gameId).update({
-        status: "lobby"
+        status: "lobby",
+        statusChangedAt: now
       });
 
       Logger.success("Lobby created - Players can now join", { gameId });
@@ -307,16 +314,36 @@ class GameManager {
         return false;
       }
 
+      const now = new Date();
+
       // If no questions, use mock questions in production too
       if (game.questions.length === 0) {
         Logger.info("No questions found, assigning mock questions to game", { gameId });
+
+        // Set startedAt for the first question
+        const updatedQuestions = [...mockQuestions];
+        updatedQuestions[0] = {
+          ...updatedQuestions[0],
+          startedAt: now
+        };
+
         await gamesCollection.doc(gameId).update({
-          questions: mockQuestions,
-          status: "in-progress"
+          questions: updatedQuestions,
+          status: "in-progress",
+          statusChangedAt: now
         });
       } else {
+        // Set startedAt for the first question
+        const updatedQuestions = [...game.questions];
+        updatedQuestions[0] = {
+          ...updatedQuestions[0],
+          startedAt: now
+        };
+
         await gamesCollection.doc(gameId).update({
-          status: "in-progress"
+          questions: updatedQuestions,
+          status: "in-progress",
+          statusChangedAt: now
         });
       }
 
@@ -357,15 +384,53 @@ class GameManager {
         return false;
       }
 
+      // Get current timestamp for answer
+      const now = new Date();
+
       const newAnswer = {
         questionIndex: game.currentQuestionIndex,
         answer,
-        timestamp: new Date()
+        timestamp: now
       };
 
+      // Calculate score based on time taken to answer
+      let scoreForQuestion = 0;
+      const isCorrect = currentQuestion.options[currentQuestion.correctAnswer] === answer;
+
+      if (isCorrect) {
+        // Base score for correct answer
+        const maxScore = 100;
+        const timeLimit = currentQuestion.timeLimit || 30; // Default to 30 seconds if not specified
+
+        // Calculate elapsed time since question started
+        let elapsedSeconds = 0;
+        if (currentQuestion.startedAt) {
+          const questionStartTime =
+            typeof currentQuestion.startedAt === 'string' || currentQuestion.startedAt instanceof Date
+              ? new Date(currentQuestion.startedAt)
+              : new Date((currentQuestion.startedAt as any).seconds * 1000);
+
+          elapsedSeconds = Math.max(0, (now.getTime() - questionStartTime.getTime()) / 1000);
+        }
+
+        // Calculate score based on time taken (linear decay)
+        // At 0 seconds: 100% of maxScore
+        // At timeLimit seconds: 50% of maxScore
+        scoreForQuestion = Math.max(
+          Math.round(maxScore * (1 - (elapsedSeconds / (timeLimit * 2)))),
+          Math.round(maxScore * 0.5) // Minimum 50% of max score for correct answers
+        );
+
+        Logger.info('Score calculated for answer', {
+          isCorrect,
+          elapsedSeconds,
+          scoreForQuestion,
+          maxScore
+        });
+      }
+
       // Update player's answers and score
-      const newScore = player.score + 
-        (currentQuestion.options[currentQuestion.correctAnswer] === answer ? 100 : 0);
+      const newScore = player.score + scoreForQuestion;
 
       // Create updated players array
       const updatedPlayers = [...game.players];
@@ -386,9 +451,12 @@ class GameManager {
 
       if (allAnswered) {
         Logger.success('All players have submitted answers, moving to results phase', { gameId });
-        
+
+        const now = new Date();
+
         await gamesCollection.doc(gameId).update({
-          status: 'results'
+          status: 'results',
+          statusChangedAt: now
         });
 
         // Replace if necessary
@@ -423,25 +491,36 @@ class GameManager {
       }
 
       const nextIndex = game.currentQuestionIndex + 1;
+      const now = new Date();
 
       if (nextIndex >= game.questions.length) {
         await gamesCollection.doc(gameId).update({
-          status: 'ended'
+          status: 'ended',
+          statusChangedAt: now
         });
         Logger.info('Game ended - all questions completed', { gameId });
         return null;
       } else {
+        // Update the next question with a startedAt timestamp
+        const updatedQuestions = [...game.questions];
+        updatedQuestions[nextIndex] = {
+          ...updatedQuestions[nextIndex],
+          startedAt: now
+        };
+
         await gamesCollection.doc(gameId).update({
           currentQuestionIndex: nextIndex,
-          status: 'in-progress'
+          questions: updatedQuestions,
+          status: 'in-progress',
+          statusChangedAt: now
         });
-        
+
         Logger.success('Advanced to next question', {
           gameId,
           questionIndex: nextIndex,
           questionsRemaining: game.questions.length - nextIndex
         });
-        
+
         return game.questions[nextIndex];
       }
     } catch (error) {
@@ -462,13 +541,13 @@ class GameManager {
 
       const game = gameDoc.data() as Game;
       const leaderboard = [...game.players].sort((a, b) => b.score - a.score);
-      
+
       Logger.info('Leaderboard generated', {
         gameId,
         playerCount: leaderboard.length,
         topScore: leaderboard[0]?.score
       });
-      
+
       return leaderboard;
     } catch (error) {
       Logger.error('Failed to get leaderboard', error);
@@ -496,7 +575,7 @@ class GameManager {
         gameId,
         questionIndex: game.currentQuestionIndex
       });
-      
+
       return game.questions[game.currentQuestionIndex];
     } catch (error) {
       Logger.error('Failed to get current question', error);
@@ -522,15 +601,18 @@ class GameManager {
         return false;
       }
 
+      const now = new Date();
+
       await gamesCollection.doc(gameId).update({
-        status: 'ended'
+        status: 'ended',
+        statusChangedAt: now
       });
-      
+
       Logger.success('Game ended successfully', {
         gameId,
         finalScores: game.players.map(p => ({ name: p.name, score: p.score }))
       });
-      
+
       return true;
     } catch (error) {
       Logger.error('Failed to end game', error);
@@ -590,11 +672,11 @@ router.get('/games/:id/players', async (req, res) => {
   const gameId = req.params.id;
 
   Logger.info('GET /games/:id/players request received', { gameId });
-  
+
   try {
     const gameIds = await gameManager.listGames();
     console.log("Active Games in Firestore: ", gameIds);
-    
+
     const game = await gameManager.getGame(gameId);
     if (!game) {
       Logger.warn('Get players request failed - game not found', { gameId });
@@ -627,13 +709,14 @@ router.post('/games/:id/lobby', async (req, res) => {
     }
 
     const questions = await gameManager.generateQuestions(topics);
-    
+
     // Update game with questions
     await gamesCollection.doc(req.params.id).update({
       questions: questions,
-      status: "lobby"
+      status: "lobby",
+      statusChangedAt: new Date()
     });
-    
+
     Logger.success("Lobby created with generated questions", { gameId: req.params.id });
     res.json({ status: "lobby", questions });
   } catch (error) {
@@ -651,7 +734,7 @@ router.post('/games/:id/start-trivia', async (req, res) => {
   try {
     const { hostId } = req.body;
     const success = await gameManager.startTrivia(req.params.id, hostId);
-    
+
     if (!success) {
       Logger.warn('Start trivia request failed');
       res.status(400).json({ error: 'Unable to start trivia' });
@@ -664,7 +747,7 @@ router.post('/games/:id/start-trivia', async (req, res) => {
       res.status(404).json({ error: 'Game not found' });
       return;
     }
-    
+
     Logger.success('Trivia started successfully');
     const question = game.questions[game.currentQuestionIndex];
     res.json({ status: "in-progress", question });
@@ -803,9 +886,9 @@ router.post('/games/:id/next-question', async (req, res) => {
     }
 
     Logger.success('Moved to next question', { gameId, questionIndex: updatedGame.currentQuestionIndex });
-    res.json({ 
-      status: 'in-progress', 
-      question: updatedGame.questions[updatedGame.currentQuestionIndex] 
+    res.json({
+      status: 'in-progress',
+      question: updatedGame.questions[updatedGame.currentQuestionIndex]
     });
   } catch (error) {
     Logger.error('Next question request failed', error);

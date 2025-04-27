@@ -8,6 +8,13 @@ export interface Player {
   score: number;
 }
 
+export interface Question {
+  text: string;
+  options: string[];
+  questionIndex: number;
+  timeLimit: number;
+}
+
 export const gameService = {
   async joinGame(gameId: string, playerName: string): Promise<Player | null> {
     try {
@@ -58,7 +65,7 @@ export const gameService = {
     }
   },
 
-  async getCurrentQuestion(gameId: string): Promise<{ text: string; options: string[]; questionIndex: number } | null> {
+  async getCurrentQuestion(gameId: string): Promise<Question | null> {
     try {
       console.log(`Fetching current question for game ${gameId}`);
       const response = await axios.get(`${API_BASE_URL}/games/${gameId}/questions`);
@@ -68,6 +75,7 @@ export const gameService = {
           text: response.data.text,
           options: response.data.options,
           questionIndex: response.data.questionIndex ?? 0,
+          timeLimit: response.data.timeLimit ?? 30
         };
       }
 
@@ -80,7 +88,7 @@ export const gameService = {
 
   async pollForNextQuestion(
     gameId: string,
-    callback: (question: any, gameStatus: string) => void
+    callback: (question: Question | null, gameStatus: string) => void
   ): Promise<() => void> {
     console.log(`Starting polling for next question in game ${gameId}`);
 
