@@ -4,13 +4,14 @@ import { QRCodeCanvas } from "qrcode.react";
 import "../styles/homepage.css";
 import { gameService } from "../services/gameService";
 
+
 const HomePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const roomCode = location.state?.roomCode || "NO CODE";
 
   const [players, setPlayers] = useState<string[]>([]);
-  const [gameStatus, setGameStatus] = useState<string>("waiting"); 
+  const [gameStatus, setGameStatus] = useState<string>("waiting");
 
   useEffect(() => {
     document.body.classList.add("homepage-body");
@@ -19,7 +20,7 @@ const HomePage: React.FC = () => {
     };
   }, []);
 
- 
+
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
@@ -30,8 +31,8 @@ const HomePage: React.FC = () => {
       }
     };
 
-    fetchPlayers(); 
-    const interval = setInterval(fetchPlayers, 3000); 
+    fetchPlayers();
+    const interval = setInterval(fetchPlayers, 3000);
 
     return () => clearInterval(interval);
   }, [roomCode]);
@@ -39,8 +40,8 @@ const HomePage: React.FC = () => {
   const handleStartTrivia = async () => {
     try {
       const data = await gameService.startTrivia(roomCode);
-      setGameStatus("in-progress"); 
-      navigate("/question", { state: { roomCode, question: data.question } }); 
+      setGameStatus("in-progress");
+      navigate("/question", { state: { roomCode, question: data.question } });
     } catch (error) {
       console.error("Failed to start trivia:", error);
     }
@@ -49,6 +50,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="host-screen">
       <header className="game-title">
+        <p className="p-link">Join using this link! https://trivia-fusion.web.app</p>
         <h1>TRIVIA FUSION</h1>
         <h2 className="sub-title">A Game by Luke McGinley & Owen Mitchell</h2>
       </header>
@@ -60,7 +62,8 @@ const HomePage: React.FC = () => {
         </div>
         <div className="qr-code-section">
           <p>Scan the QR Code to Join:</p>
-          <QRCodeCanvas value={`http://localhost:5175/?room=${roomCode}`} size={180} />
+          <QRCodeCanvas value={`https://trivia-fusion.web.app/?room=${roomCode}`
+          } size={180} />
         </div>
       </main>
 
@@ -80,9 +83,9 @@ const HomePage: React.FC = () => {
       </footer>
 
       <div className="start-button-container">
-          <button className="start-game-button" onClick={handleStartTrivia}>
-            Start Trivia
-          </button>
+        <button className="start-game-button" onClick={handleStartTrivia}>
+          Start Trivia
+        </button>
       </div>
     </div>
   );

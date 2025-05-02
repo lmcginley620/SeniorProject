@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'https://us-central1-trivia-fusion.cloudfunctions.net/gameApi';
 
 export interface Game {
   id: string;
@@ -38,13 +38,12 @@ class GameService {
     return Math.random().toString(36).substring(2, 15);
   }
 
-  // ✅ Step 1: Create the Game
   async createGame(): Promise<Game> {
     try {
       console.log('Creating new game with hostId:', this.hostId);
       const response = await axios.post(`${API_BASE_URL}/games`, {
         hostId: this.hostId,
-        topics: [] // Topics will be added later
+        topics: []
       });
       console.log('Game created:', response.data);
       return response.data;
@@ -54,7 +53,6 @@ class GameService {
     }
   }
 
-  // ✅ Step 2: Move the game to "lobby" so players can join
   async createLobby(gameId: string, topics: string[]): Promise<any> {
     try {
       console.log(`Creating lobby for game ID: ${gameId} with topics:`, topics);
@@ -77,7 +75,6 @@ class GameService {
     }
   }
 
-
   async startTrivia(gameId: string): Promise<any> {
     try {
       console.log(`Starting trivia for game ID: ${gameId}`);
@@ -90,15 +87,13 @@ class GameService {
       const response = await axios.post(`${API_BASE_URL}/games/${gameId}/start-trivia`, { hostId });
       console.log("Trivia started successfully:", response.data);
 
-      return response.data; // ✅ Returns the first question
+      return response.data;
     } catch (error: any) {
       console.error("Failed to start trivia:", error.response?.data || error.message);
       throw error;
     }
   }
 
-
-  // ✅ Step 4: Player Joins the Game (Only Allowed in "lobby" State)
   async joinGame(gameId: string, playerName: string): Promise<Player | null> {
     try {
       console.log(`Joining game ${gameId} as ${playerName}`);
@@ -111,7 +106,6 @@ class GameService {
       console.log("Joined game:", response.data);
       return response.data;
     } catch (error: any) {
-      // ✅ If game is already "in-progress", show an error message
       if (error.response?.status === 400) {
         console.error("Game is already in progress. Cannot join.");
         return null;
@@ -122,7 +116,6 @@ class GameService {
     }
   }
 
-  // ✅ Step 5: Get the List of Players in a Game
   async getPlayers(gameId: string): Promise<Player[]> {
     try {
       console.log(`Fetching players for game ${gameId}`);
@@ -145,8 +138,6 @@ class GameService {
     }
   }
 
-
-  // ✅ Fetch Game Status (NEW)
   async getGameStatus(gameId: string): Promise<'waiting' | 'lobby' | 'in-progress' | 'results' | 'ended' | null> {
     try {
       console.log(`Fetching game status for game ${gameId}`);
@@ -158,7 +149,6 @@ class GameService {
     }
   }
 
-  // ✅ Move to the Next Question (NEW)
   async nextQuestion(gameId: string): Promise<Question | null> {
     try {
       console.log(`Advancing to next question for game ${gameId}`);
@@ -176,7 +166,6 @@ class GameService {
     }
   }
 
-  // ✅ Submit Answer
   async submitAnswer(gameId: string, playerId: string, answer: string): Promise<boolean> {
     try {
       console.log(`Submitting answer for player ${playerId} in game ${gameId}`);
@@ -194,7 +183,6 @@ class GameService {
     }
   }
 
-  // ✅ Poll Game Status to Detect Changes
   async pollGameStatus(gameId: string, callback: (status: string) => void) {
     try {
       const checkStatus = async () => {
@@ -207,14 +195,20 @@ class GameService {
       // Check every second
       const interval = setInterval(checkStatus, 1000);
 
-      // Stop polling when the game ends
       return () => clearInterval(interval);
     } catch (error) {
       console.error("Error polling game status:", error);
     }
   }
 
-  async getGameResults(gameId: string): Promise<{ question: string; results: Record<string, number> } | null> {
+  async getGameResults(gameId: string): Promise<{
+    question: string;
+    results: Record<string, number>;
+    correctAnswer?: number;
+    playerScores?: { id: string; name: string; score: number }[];
+  } | null> {
+
+
     try {
       console.log(`Fetching results for game ${gameId}`);
       const response = await axios.get(`${API_BASE_URL}/games/${gameId}/results`);
@@ -231,6 +225,18 @@ class GameService {
       return null;  // Prevents breaking the UI if results fail
     }
   }
+
+  async getGame(gameId: string): Promise<Game> {
+    try {
+      console.log(`Fetching full game data for game ID: ${gameId}`);
+      const response = await axios.get(`${API_BASE_URL}/games/${gameId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error("Failed to fetch game data:", error.response?.data || error.message);
+      throw error;
+    }
+  }
+
 
 
   async pollForNextQuestion(
@@ -259,7 +265,7 @@ class GameService {
           return;
         }
 
-        // ✅ Keep polling until the new question actually changes
+        // Keep polling until the new question actually changes
         if (waitingForResults && status === "in-progress") {
           console.log("Game moved from results to in-progress, checking for new question...");
 
@@ -287,10 +293,6 @@ class GameService {
       clearInterval(interval);
     };
   }
-
-
-
-
 }
 
 export const gameService = new GameService();

@@ -1,5 +1,5 @@
-/* Ensures full-screen and prevents scrolling */
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -20,7 +20,6 @@ html, body {
   overflow: hidden;
 }
 
-/* Large game title styling */
 .game-title {
   font-size: 4rem;
   font-weight: bold;
@@ -32,33 +31,44 @@ html, body {
   color: #ff6f61;
 }
 
-/* Secondary heading for waiting message */
 h2 {
   font-size: 2rem;
   margin-bottom: 10px;
   font-weight: bold;
 }
 
-/* Paragraph text */
 p {
   font-size: 1.2rem;
   margin: 5px 0;
 }
 
-/* Loading animation */
 .loading-dots {
   font-size: 2rem;
   animation: blink 1.5s infinite;
 }
 
 @keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
-/* Fade-in animation for title */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

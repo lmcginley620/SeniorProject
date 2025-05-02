@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { CountdownCircleTimer } from "react-countdown-circle-timer";
 import { gameService } from "../services/gameService";
 import "../styles/questionpage.css";
 
@@ -11,7 +12,9 @@ const QuestionPage: React.FC = () => {
   const initialQuestion = location.state?.question || null;
 
   const [question, setQuestion] = useState(initialQuestion);
-const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
+  const [totalQuestions, setTotalQuestions] = useState<number | null>(null);
+
 
   useEffect(() => {
     document.body.classList.add("question-page-body");
@@ -25,7 +28,17 @@ const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(
       if (!question) {
         try {
           const newQuestion = await gameService.getQuestion(roomCode);
-          setQuestion(newQuestion);
+
+          if (newQuestion) {
+            setQuestion(newQuestion);
+            setCurrentQuestionIndex(newQuestion.questionIndex ?? 0);
+
+            const game = await gameService.getGame(roomCode);
+            setTotalQuestions(game.questions.length);
+          } else {
+            console.warn("No question received from server.");
+          }
+
         } catch (error) {
           console.error("Failed to fetch question:", error);
         }
@@ -35,20 +48,21 @@ const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(
     fetchQuestion();
   }, [question, roomCode]);
 
-  // ✅ Poll game status to detect results phase
+
+
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const status = await gameService.getGameStatus(roomCode);
         if (status === "results") {
-          navigate("/question-result", { state: { roomCode } }); // ✅ Auto-navigate to results page
+          navigate("/question-result", { state: { roomCode } });
         }
       } catch (error) {
         console.error("Error checking game status:", error);
       }
-    }, 1000); // ✅ Check status every second
+    }, 1000);
 
-    return () => clearInterval(interval); // Cleanup interval on unmount
+    return () => clearInterval(interval);
   }, [roomCode, navigate]);
 
   if (!question) {
@@ -59,6 +73,24 @@ const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(
 
   return (
     <div className="question-page-wrapper">
+      <div className="timer-background">
+        <CountdownCircleTimer
+          isPlaying
+          duration={30}
+          colors={["#2ecc71", "#f1c40f", "#e74c3c"]}
+          colorsTime={[30, 15, 0]}
+          size={250}
+          strokeWidth={12}
+          trailColor="#e0e0e0"
+        >
+          {({ remainingTime }) => (
+            <div className="circle-timer-inner">
+              {remainingTime}s
+            </div>
+          )}
+        </CountdownCircleTimer>
+      </div>
+
       <div className="content-wrapper">
         <div className="question-number">Question #{currentQuestionIndex}</div>
         <div className="question-page-container">

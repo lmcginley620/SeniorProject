@@ -3,24 +3,23 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 
-// This type is used to define the shape of the leaderboard data.
-export type Payment = {
-    position: string;  // Position of the player in the leaderboard
-    score: number;     // Score of the player
-    username: string;  // Username or email of the player
+export type score = {
+    position: string;
+    score: number;
+    username: string;
 }
 
-export const columns: ColumnDef<Payment>[] = [
+export const columns: ColumnDef<score>[] = [
     {
-        accessorKey: "position", // The position of the player in the leaderboard
+        accessorKey: "position",
         header: "Position",
     },
     {
-        accessorKey: "username", // The player's username
+        accessorKey: "username",
         header: "Username",
     },
     {
-        accessorKey: "score", // The player's score
+        accessorKey: "score",
         header: "Score",
     },
 ];

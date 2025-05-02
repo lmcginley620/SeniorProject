@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { gameService } from "../services/gameService";
 import "../styles/waitingroom.css";
@@ -9,14 +9,12 @@ const WaitingRoom: React.FC = () => {
   const roomCode = location.state?.roomCode || "NO CODE";
   const playerName = location.state?.playerName || "Unknown";
 
-  const [gameStatus, setGameStatus] = useState("lobby");
-
   useEffect(() => {
     const checkGameStatus = async () => {
       try {
         const game = await gameService.getGameStatus(roomCode);
-        setGameStatus(game.status);
-
+        // Use the status directly without setting state
+        
         if (game.status === "in-progress") {
           navigate("/question-answer", { state: { roomCode, playerName } });
         }
@@ -39,7 +37,6 @@ const WaitingRoom: React.FC = () => {
       <p className="loading-dots">● ● ●</p>
     </div>
   );
-  
 };
 
 export default WaitingRoom;

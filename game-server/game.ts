@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import express from 'express';
 import { Router } from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
@@ -92,7 +94,7 @@ class GameManager {
   private anthropic: Anthropic | null;
   private debugMode: boolean;
 
-  constructor(apiKey: string, debug: boolean = false) {
+  constructor(debug: boolean = false) {
     this.games = new Map();
     this.debugMode = debug;
     this.anthropic = debug ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
@@ -266,20 +268,17 @@ class GameManager {
 
     const currentQuestion = game.questions[game.currentQuestionIndex];
 
-    // Prevent duplicate answers
     if (player.answers.some(a => a.questionIndex === game.currentQuestionIndex)) {
       Logger.warn('Duplicate answer detected', { gameId, playerId });
       return false;
     }
 
-    // Record the player's answer
     player.answers.push({
       questionIndex: game.currentQuestionIndex,
       answer,
       timestamp: new Date()
     });
 
-    // ✅ Award points if correct
     if (currentQuestion.options[currentQuestion.correctAnswer] === answer) {
       player.score += 100;
       Logger.success('Correct answer submitted', { gameId, playerId, newScore: player.score });
@@ -287,7 +286,6 @@ class GameManager {
       Logger.info('Incorrect answer submitted', { gameId, playerId });
     }
 
-    // ✅ Check if all players have submitted answers
     const allAnswered = game.players.every(p =>
       p.answers.some(a => a.questionIndex === game.currentQuestionIndex)
     );
@@ -295,10 +293,8 @@ class GameManager {
     if (allAnswered) {
       Logger.success('All players have submitted answers, moving to results phase', { gameId });
 
-      // ✅ Transition game state to results phase
       game.status = 'results';
 
-      // ✅ Automatically move to the next question after 5 seconds
       setTimeout(() => {
         this.nextQuestion(gameId);
       }, 5000);
@@ -320,24 +316,23 @@ class GameManager {
       return null;
     }
 
-    setTimeout(() => {
-      game.currentQuestionIndex++;
+    game.currentQuestionIndex++;
 
-      if (game.currentQuestionIndex >= game.questions.length) {
-        game.status = 'ended';
-        Logger.info('Game ended - all questions completed', { gameId });
-        return;
-      }
+    if (game.currentQuestionIndex >= game.questions.length) {
+      game.status = 'ended';
+      Logger.info('Game ended - all questions completed', { gameId });
+      return null;
+    }
 
-      game.status = 'in-progress';
-      Logger.success('Advanced to next question', {
-        gameId,
-        questionIndex: game.currentQuestionIndex,
-        questionsRemaining: game.questions.length - game.currentQuestionIndex
-      });
-    }, 3000);
+    game.status = 'in-progress';
+    Logger.success('Advanced to next question', {
+      gameId,
+      questionIndex: game.currentQuestionIndex,
+      questionsRemaining: game.questions.length - game.currentQuestionIndex
+    });
 
-    return null;
+    return game.questions[game.currentQuestionIndex];
+
   }
 
   getLeaderboard(gameId: string): Player[] {
@@ -398,7 +393,7 @@ class GameManager {
 // router setup
 const router = Router();
 const isDebugMode = process.env.DEBUG_MODE === 'true';
-const gameManager = new GameManager(process.env.OPENAI_API_KEY || '', isDebugMode);
+const gameManager = new GameManager(isDebugMode);
 
 // api endpoints
 router.get('/', (req, res) => {
@@ -418,6 +413,22 @@ router.post('/games', async (req, res) => {
     res.status(500).json({ error: 'Failed to create game' });
   }
 });
+
+router.get('/games/:id', (req, res) => {
+  const gameId = req.params.id;
+  Logger.info("GET /games/:id request received", { gameId });
+
+  const game = gameManager.getGame(gameId);
+  if (!game) {
+    Logger.warn("Game not found", { gameId });
+    res.status(404).json({ error: "Game not found" });
+    return;
+  }
+
+  Logger.success("Full game object returned", { gameId });
+  res.json(game);
+});
+
 
 router.post('/games/:id/join', (req, res) => {
   Logger.info('POST /games/:id/join request received', {
@@ -502,9 +513,17 @@ router.post('/games/:id/start-trivia', (req, res) => {
 });
 
 router.get('/games/:id/questions', (req, res) => {
-  Logger.info('GET /games/:id/questions request received', { gameId: req.params.id });
+  const gameId = req.params.id;
+  Logger.info('GET /games/:id/questions request received', { gameId });
 
-  const question = gameManager.getCurrentQuestion(req.params.id);
+  const game = gameManager.getGame(gameId);
+  if (!game) {
+    Logger.warn('Game not found', { gameId });
+    res.status(404).json({ error: 'Game not found' });
+    return;
+  }
+
+  const question = gameManager.getCurrentQuestion(gameId);
   if (!question) {
     Logger.warn('Get question request failed');
     res.status(400).json({ error: 'No current question' });
@@ -512,8 +531,12 @@ router.get('/games/:id/questions', (req, res) => {
   }
 
   Logger.success('Get question request completed');
-  res.json(question);
+  res.json({
+    ...question,
+    questionIndex: game.currentQuestionIndex  // ✅ Add the index manually here
+  });
 });
+
 
 router.get('/games/:id/results', (req, res) => {
   const gameId = req.params.id;
@@ -521,7 +544,6 @@ router.get('/games/:id/results', (req, res) => {
 
   const game = gameManager.getGame(gameId);
 
-  // ✅ Fix: Ensure results are fetched when the game is in "results" phase
   if (!game || game.status !== 'results') {
     Logger.warn('Get results request failed - game is not in results phase', { gameId, status: game?.status });
     res.status(400).json({ error: 'Game is not in results phase' });
@@ -529,8 +551,21 @@ router.get('/games/:id/results', (req, res) => {
   }
 
   const currentQuestion = game.questions[game.currentQuestionIndex];
+  const playerScores = game.players.map((player) => {
+    const lastAnswer = player.answers.find(
+      (a) => a.questionIndex === game.currentQuestionIndex
+    );
 
-  // ✅ Count the answers submitted by players
+    const isCorrect = lastAnswer?.answer === currentQuestion.options[currentQuestion.correctAnswer];
+    return {
+      id: player.id,
+      name: player.name,
+      score: player.score,
+      pointsGained: isCorrect ? 100 : 0
+    };
+  });
+
+
   const answerCounts: Record<string, number> = {};
   currentQuestion.options.forEach((option) => {
     answerCounts[option] = 0;
@@ -546,10 +581,8 @@ router.get('/games/:id/results', (req, res) => {
   });
 
   Logger.success('Results retrieved successfully', { gameId, results: answerCounts });
-  res.json({ question: currentQuestion.text, results: answerCounts });
+  res.json({ question: currentQuestion.text, results: answerCounts, playerScores });
 });
-
-
 
 
 router.get("/games/:id/status", (req, res) => {
@@ -616,6 +649,8 @@ router.post('/games/:id/next-question', (req, res) => {
   Logger.success('Moved to next question', { gameId, question: nextQuestion });
   res.json({ status: 'in-progress', question: nextQuestion });
 });
+
+
 
 
 export default router;
