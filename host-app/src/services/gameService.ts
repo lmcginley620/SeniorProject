@@ -204,8 +204,10 @@ class GameService {
   async getGameResults(gameId: string): Promise<{
     question: string;
     results: Record<string, number>;
-    playerScores?: { id: string; name: string; score: number; }[];
+    correctAnswer?: number;
+    playerScores?: { id: string; name: string; score: number }[];
   } | null> {
+
 
     try {
       console.log(`Fetching results for game ${gameId}`);

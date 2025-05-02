@@ -32,6 +32,7 @@ export function QuestionResults() {
   const [questionText, setQuestionText] = useState<string>("Loading...");
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [progress, setProgress] = useState(100);
+  const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const totalTime = 15000; // 15 seconds
@@ -60,6 +61,7 @@ export function QuestionResults() {
         console.log("Game results received in UI:", response);
 
         if (response) {
+          setCorrectAnswerIndex(response.correctAnswer ?? null);
           const formattedData = Object.keys(response.results).map((option, index) => ({
             name: option,
             votes: response.results[option],
@@ -196,7 +198,11 @@ export function QuestionResults() {
 
                 <div className="flex-1 flex flex-col justify-evenly pl-6 w-full max-w-[700px]">
                   {chartData.map((entry, index) => (
-                    <div key={index} className="flex items-center space-x-3 text-2xl">
+                    <div
+                      key={index}
+                      className={`flex items-center space-x-3 text-2xl ${correctAnswerIndex !== null && index === correctAnswerIndex ? "font-bold underline text-green-600 dark:text-green-400" : ""
+                        }`}
+                    >
                       <div
                         style={{
                           backgroundColor: COLORS[index],
@@ -205,9 +211,10 @@ export function QuestionResults() {
                           borderRadius: 6,
                         }}
                       />
-                      <span className="text-gray-800 dark:text-white font-semibold">{entry.name}</span>
+                      <span className="text-gray-800 dark:text-white">{entry.name}</span>
                     </div>
                   ))}
+
                 </div>
               </CardContent>
             </div>

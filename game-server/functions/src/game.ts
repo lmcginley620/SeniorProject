@@ -168,7 +168,7 @@ class GameManager {
     try {
       if (!this.anthropic) throw new Error('Anthropic client is not initialized.');
 
-      const prompt = `Generate 3 multiple-choice trivia questions on the following topics: ${topics.join(', ')}.
+      const prompt = `Generate 5 multiple-choice trivia questions on the following topics: ${topics.join(', ')}.
       Each question should have 4 answer choices, and the correct answer should be marked with its index (0-3).
       Format the response as a JSON array of objects with "text", "options", "correctAnswer", and "timeLimit".
       The response should just be the raw JSON, do not write it in a code block.`;
